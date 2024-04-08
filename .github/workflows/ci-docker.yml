@@ -1,0 +1,31 @@
+name: Docker CI
+
+on:
+  pull_request:
+    branches: ['main']
+    paths: ['Dockerfile','cmd/**','docs/**','internal/**','go.*','.github/workflows/ci-docker.yml']
+
+env:
+  GHCR_IMAGE_NAME: ghcr.io/blinklabs-io/node
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: qemu
+        uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.GHCR_IMAGE_NAME }}
+      - name: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          ### TODO: test multiple platforms
+          # platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
