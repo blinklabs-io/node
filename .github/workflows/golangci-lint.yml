@@ -1,0 +1,33 @@
+# This file was copied from the following URL and modified:
+# https://github.com/golangci/golangci-lint-action/blob/master/README.md#how-to-use
+
+name: golangci-lint
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.21.x
+          cache: false
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: v1.54 # current version at time of commit
+          args: --timeout=10m
+          # Only show new issues in a PR but show all issues for pushes
+          only-new-issues: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
