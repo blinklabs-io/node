@@ -14,16 +14,60 @@
 
 package node
 
+import (
+	"fmt"
+
+	ouroboros "github.com/blinklabs-io/gouroboros"
+)
+
 type Node struct {
+	config      Config
+	connManager *ouroboros.ConnectionManager
 	// TODO
 }
 
-func New() (*Node, error) {
-	// TODO
-	return &Node{}, nil
+func New(cfg Config) (*Node, error) {
+	n := &Node{
+		config: cfg,
+	}
+	if err := n.configPopulateNetworkMagic(); err != nil {
+		return nil, fmt.Errorf("invalid configuration: %s", err)
+	}
+	if err := n.configValidate(); err != nil {
+		return nil, fmt.Errorf("invalid configuration: %s", err)
+	}
+	return n, nil
 }
 
 func (n *Node) Run() error {
+	// Configure connection manager
+	n.connManager = ouroboros.NewConnectionManager(
+		ouroboros.ConnectionManagerConfig{
+			ConnClosedFunc: n.connectionManagerConnClosed,
+		},
+	)
+	// Start listeners
+	for _, l := range n.config.listeners {
+		go n.startListener(l)
+	}
 	// TODO
+
+	// Wait forever
+	select {}
 	return nil
+}
+
+func (n *Node) connectionManagerConnClosed(connId ouroboros.ConnectionId, err error) {
+	if err != nil {
+		n.config.logger.Error(fmt.Sprintf("unexpected connection failure: %s: %s", connId.String(), err))
+	} else {
+		n.config.logger.Info(fmt.Sprintf("connection closed: %s", connId.String()))
+	}
+	conn := n.connManager.GetConnectionById(connId)
+	if conn == nil {
+		return
+	}
+	// Remove connection
+	n.connManager.RemoveConnection(connId)
+	// TODO: additional cleanup
 }

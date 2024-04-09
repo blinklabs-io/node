@@ -16,14 +16,31 @@ package node
 
 import (
 	"log/slog"
+	"net"
 
 	"github.com/blinklabs-io/node"
 )
 
-func Run() error {
-	// TODO
-	slog.Info("running node")
-	n, err := node.New()
+func Run(logger *slog.Logger) error {
+	logger.Info("running node")
+	// TODO: make this configurable
+	l, err := net.Listen("tcp", ":3000")
+	if err != nil {
+		return err
+	}
+	logger.Info("listening for connections on :3000")
+	n, err := node.New(
+		node.NewConfig(
+			node.WithLogger(logger),
+			// TODO: make this configurable
+			node.WithNetwork("preview"),
+			node.WithListeners(
+				node.ListenerConfig{
+					Listener: l,
+				},
+			),
+		),
+	)
 	if err != nil {
 		return err
 	}

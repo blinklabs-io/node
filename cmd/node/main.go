@@ -41,7 +41,7 @@ func main() {
 				fmt.Printf("%s %s\n", programName, version.GetVersionString())
 				os.Exit(0)
 			}
-			// Configure default logger
+			// Configure logger
 			logLevel := slog.LevelInfo
 			if globalFlags.debug {
 				logLevel = slog.LevelDebug
@@ -53,7 +53,7 @@ func main() {
 			)
 			slog.SetDefault(logger)
 			// Run node
-			if err := node.Run(); err != nil {
+			if err := node.Run(logger); err != nil {
 				slog.Error(err.Error())
 				os.Exit(1)
 			}
