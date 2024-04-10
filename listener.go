@@ -20,6 +20,7 @@ import (
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/protocol/peersharing"
+	"github.com/blinklabs-io/gouroboros/protocol/txsubmission"
 )
 
 type ListenerConfig struct {
@@ -33,17 +34,34 @@ func (n *Node) startListener(l ListenerConfig) {
 		ouroboros.WithNetworkMagic(n.config.networkMagic),
 		ouroboros.WithNodeToNode(!l.UseNtC),
 		ouroboros.WithServer(true),
-		ouroboros.WithPeerSharing(n.config.peerSharing),
-		// TODO: add protocol configs to configure callback functions
 	}
-	if n.config.peerSharing {
+	if l.UseNtC {
+		// Node-to-client
 		defaultConnOpts = append(
 			defaultConnOpts,
+			// TODO: add localtxsubmission
+			// TODO: add localstatequery
+			// TODO: add localtxmonitor
+		)
+	} else {
+		// Node-to-node
+		defaultConnOpts = append(
+			defaultConnOpts,
+			// Peer sharing
+			ouroboros.WithPeerSharing(n.config.peerSharing),
 			ouroboros.WithPeerSharingConfig(
 				peersharing.NewConfig(
 					peersharing.WithShareRequestFunc(n.peersharingShareRequest),
 				),
 			),
+			// TxSubmission
+			ouroboros.WithTxSubmissionConfig(
+				txsubmission.NewConfig(
+					txsubmission.WithInitFunc(n.txsubmissionServerInit),
+				),
+			),
+			// TODO: add chain-sync
+			// TODO: add block-fetch
 		)
 	}
 	for {
