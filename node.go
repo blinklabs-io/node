@@ -17,18 +17,22 @@ package node
 import (
 	"fmt"
 
+	"github.com/blinklabs-io/node/chainsync"
+
 	ouroboros "github.com/blinklabs-io/gouroboros"
 )
 
 type Node struct {
-	config      Config
-	connManager *ouroboros.ConnectionManager
+	config         Config
+	connManager    *ouroboros.ConnectionManager
+	chainsyncState *chainsync.State
 	// TODO
 }
 
 func New(cfg Config) (*Node, error) {
 	n := &Node{
-		config: cfg,
+		config:         cfg,
+		chainsyncState: chainsync.NewState(),
 	}
 	if err := n.configPopulateNetworkMagic(); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %s", err)
@@ -68,5 +72,7 @@ func (n *Node) connectionManagerConnClosed(connId ouroboros.ConnectionId, err er
 	}
 	// Remove connection
 	n.connManager.RemoveConnection(connId)
+	// Remove any chainsync client state
+	n.chainsyncState.RemoveClient(connId)
 	// TODO: additional cleanup
 }
