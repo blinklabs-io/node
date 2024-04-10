@@ -54,7 +54,6 @@ func (n *Node) Run() error {
 
 	// Wait forever
 	select {}
-	return nil
 }
 
 func (n *Node) connectionManagerConnClosed(connId ouroboros.ConnectionId, err error) {

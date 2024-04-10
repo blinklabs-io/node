@@ -19,6 +19,7 @@ import (
 	"net"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
+	"github.com/blinklabs-io/gouroboros/protocol/peersharing"
 )
 
 type ListenerConfig struct {
@@ -34,6 +35,16 @@ func (n *Node) startListener(l ListenerConfig) {
 		ouroboros.WithServer(true),
 		ouroboros.WithPeerSharing(n.config.peerSharing),
 		// TODO: add protocol configs to configure callback functions
+	}
+	if n.config.peerSharing {
+		defaultConnOpts = append(
+			defaultConnOpts,
+			ouroboros.WithPeerSharingConfig(
+				peersharing.NewConfig(
+					peersharing.WithShareRequestFunc(n.peersharingShareRequest),
+				),
+			),
+		)
 	}
 	for {
 		// Accept connection
