@@ -21,6 +21,23 @@ import (
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 )
 
+func (n *Node) chainsyncServerConnOpts() []ochainsync.ChainSyncOptionFunc {
+	return []ochainsync.ChainSyncOptionFunc{
+		ochainsync.WithFindIntersectFunc(n.chainsyncServerFindIntersect),
+		ochainsync.WithRequestNextFunc(n.chainsyncServerRequestNext),
+	}
+}
+
+func (n *Node) chainsyncClientConnOpts() []ochainsync.ChainSyncOptionFunc {
+	return []ochainsync.ChainSyncOptionFunc{
+		// TODO
+		/*
+			ochainsync.WithRollForwardFunc(n.chainsyncClientRollForward),
+			ochainsync.WithRollBackwardFunc(n.chainsyncClientRollBackward),
+		*/
+	}
+}
+
 func (n *Node) chainsyncServerFindIntersect(ctx ochainsync.CallbackContext, points []ocommon.Point) (ocommon.Point, ochainsync.Tip, error) {
 	var retPoint ocommon.Point
 	var retTip ochainsync.Tip

@@ -16,6 +16,7 @@ package node
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/blinklabs-io/node/chainsync"
 
@@ -23,9 +24,11 @@ import (
 )
 
 type Node struct {
-	config         Config
-	connManager    *ouroboros.ConnectionManager
-	chainsyncState *chainsync.State
+	config             Config
+	connManager        *ouroboros.ConnectionManager
+	chainsyncState     *chainsync.State
+	outboundConns      map[ouroboros.ConnectionId]outboundPeer
+	outboundConnsMutex sync.Mutex
 	// TODO
 }
 
@@ -33,6 +36,7 @@ func New(cfg Config) (*Node, error) {
 	n := &Node{
 		config:         cfg,
 		chainsyncState: chainsync.NewState(),
+		outboundConns:  make(map[ouroboros.ConnectionId]outboundPeer),
 	}
 	if err := n.configPopulateNetworkMagic(); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %s", err)
@@ -52,8 +56,15 @@ func (n *Node) Run() error {
 	)
 	// Start listeners
 	for _, l := range n.config.listeners {
-		go n.startListener(l)
+		if err := n.startListener(l); err != nil {
+			return err
+		}
 	}
+	// Start outbound connections
+	if n.config.topologyConfig != nil {
+		n.connManager.AddHostsFromTopology(n.config.topologyConfig)
+	}
+	n.startOutboundConnections()
 	// TODO
 
 	// Wait forever

@@ -23,12 +23,13 @@ import (
 )
 
 type Config struct {
-	logger       *slog.Logger
-	listeners    []ListenerConfig
-	network      string
-	networkMagic uint32
-	peerSharing  bool
-	// TODO
+	logger             *slog.Logger
+	listeners          []ListenerConfig
+	network            string
+	networkMagic       uint32
+	peerSharing        bool
+	outboundSourcePort int
+	topologyConfig     *ouroboros.TopologyConfig
 }
 
 // configPopulateNetworkMagic uses the named network (if specified) to determine the network magic value (if not specified)
@@ -51,6 +52,15 @@ func (n *Node) configValidate() error {
 	}
 	if len(n.config.listeners) == 0 {
 		return fmt.Errorf("no listeners defined")
+	}
+	for _, listener := range n.config.listeners {
+		if listener.Listener != nil {
+			continue
+		}
+		if listener.ListenNetwork != "" && listener.ListenAddress != "" {
+			continue
+		}
+		return fmt.Errorf("listener must provide net.Listener or listen network/address values")
 	}
 	return nil
 }
@@ -105,5 +115,19 @@ func WithNetworkMagic(networkMagic uint32) ConfigOptionFunc {
 func WithPeerSharing(peerSharing bool) ConfigOptionFunc {
 	return func(c *Config) {
 		c.peerSharing = peerSharing
+	}
+}
+
+// WithOutboundSourcePort specifies the source port to use for outbound connections. This defaults to dynamic source ports
+func WithOutboundSourcePort(port int) ConfigOptionFunc {
+	return func(c *Config) {
+		c.outboundSourcePort = port
+	}
+}
+
+// WithTopologyConfig specifies an ouroboros.TopologyConfig to use for outbound peers
+func WithTopologyConfig(topologyConfig *ouroboros.TopologyConfig) ConfigOptionFunc {
+	return func(c *Config) {
+		c.topologyConfig = topologyConfig
 	}
 }

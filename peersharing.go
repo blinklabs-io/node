@@ -15,10 +15,22 @@
 package node
 
 import (
-	"github.com/blinklabs-io/gouroboros/protocol/peersharing"
+	opeersharing "github.com/blinklabs-io/gouroboros/protocol/peersharing"
 )
 
-func (n *Node) peersharingShareRequest(ctx peersharing.CallbackContext, amount int) ([]peersharing.PeerAddress, error) {
+func (n *Node) peersharingServerConnOpts() []opeersharing.PeerSharingOptionFunc {
+	return []opeersharing.PeerSharingOptionFunc{
+		opeersharing.WithShareRequestFunc(n.peersharingShareRequest),
+	}
+}
+
+func (n *Node) peersharingClientConnOpts() []opeersharing.PeerSharingOptionFunc {
+	return []opeersharing.PeerSharingOptionFunc{
+		// TODO
+	}
+}
+
+func (n *Node) peersharingShareRequest(ctx opeersharing.CallbackContext, amount int) ([]opeersharing.PeerAddress, error) {
 	// TODO: add hooks for getting peers to share
-	return []peersharing.PeerAddress{}, nil
+	return []opeersharing.PeerAddress{}, nil
 }
