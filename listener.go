@@ -19,6 +19,8 @@ import (
 	"net"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
+	"github.com/blinklabs-io/gouroboros/protocol/blockfetch"
+	"github.com/blinklabs-io/gouroboros/protocol/chainsync"
 	"github.com/blinklabs-io/gouroboros/protocol/peersharing"
 	"github.com/blinklabs-io/gouroboros/protocol/txsubmission"
 )
@@ -60,8 +62,19 @@ func (n *Node) startListener(l ListenerConfig) {
 					txsubmission.WithInitFunc(n.txsubmissionServerInit),
 				),
 			),
-			// TODO: add chain-sync
-			// TODO: add block-fetch
+			// ChainSync
+			ouroboros.WithChainSyncConfig(
+				chainsync.NewConfig(
+					chainsync.WithFindIntersectFunc(n.chainsyncServerFindIntersect),
+					chainsync.WithRequestNextFunc(n.chainsyncServerRequestNext),
+				),
+			),
+			// BlockFetch
+			ouroboros.WithBlockFetchConfig(
+				blockfetch.NewConfig(
+					blockfetch.WithRequestRangeFunc(n.blockfetchServerRequestRange),
+				),
+			),
 		)
 	}
 	for {
