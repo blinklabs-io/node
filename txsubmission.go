@@ -18,14 +18,34 @@ import (
 	"fmt"
 
 	"github.com/blinklabs-io/gouroboros/ledger"
-	"github.com/blinklabs-io/gouroboros/protocol/txsubmission"
+	otxsubmission "github.com/blinklabs-io/gouroboros/protocol/txsubmission"
 )
 
 const (
 	txsubmissionRequestTxIdsCount = 10 // Number of TxIds to request from peer at one time
 )
 
-func (n *Node) txsubmissionServerInit(ctx txsubmission.CallbackContext) error {
+func (n *Node) txsubmissionServerConnOpts() []otxsubmission.TxSubmissionOptionFunc {
+	return []otxsubmission.TxSubmissionOptionFunc{
+		otxsubmission.WithInitFunc(n.txsubmissionServerInit),
+	}
+}
+
+func (n *Node) txsubmissionClientConnOpts() []otxsubmission.TxSubmissionOptionFunc {
+	return []otxsubmission.TxSubmissionOptionFunc{
+		// TODO
+		/*
+			txsubmission.WithRequestTxIdsFunc(
+				n.txsubmissionClientRequestTxIds,
+			),
+			txsubmission.WithRequestTxsFunc(
+				n.txsubmissionClientRequestTxs,
+			),
+		*/
+	}
+}
+
+func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
 	// Start async loop to request transactions from the peer's mempool
 	go func() {
 		for {
@@ -38,7 +58,7 @@ func (n *Node) txsubmissionServerInit(ctx txsubmission.CallbackContext) error {
 			}
 			if len(txIds) > 0 {
 				// Unwrap inner TxId from TxIdAndSize
-				var requestTxIds []txsubmission.TxId
+				var requestTxIds []otxsubmission.TxId
 				for _, txId := range txIds {
 					requestTxIds = append(requestTxIds, txId.TxId)
 				}

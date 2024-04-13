@@ -19,6 +19,21 @@ import (
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 )
 
+func (n *Node) blockfetchServerConnOpts() []oblockfetch.BlockFetchOptionFunc {
+	return []oblockfetch.BlockFetchOptionFunc{
+		oblockfetch.WithRequestRangeFunc(n.blockfetchServerRequestRange),
+	}
+}
+
+func (n *Node) blockfetchClientConnOpts() []oblockfetch.BlockFetchOptionFunc {
+	return []oblockfetch.BlockFetchOptionFunc{
+		// TODO
+		/*
+			oblockfetch.WithBlockFunc(n.blockfetchClientBlock),
+		*/
+	}
+}
+
 func (n *Node) blockfetchServerRequestRange(ctx oblockfetch.CallbackContext, start ocommon.Point, end ocommon.Point) error {
 	// TODO: check if we have requested block range available and send NoBlocks if not
 	// Start async process to send requested block range

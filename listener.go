@@ -15,6 +15,7 @@
 package node
 
 import (
+	"context"
 	"fmt"
 	"net"
 
@@ -26,16 +27,32 @@ import (
 )
 
 type ListenerConfig struct {
-	UseNtC   bool
-	Listener net.Listener
-	// TODO
+	UseNtC        bool
+	Listener      net.Listener
+	ListenNetwork string
+	ListenAddress string
+	ReuseAddress  bool
 }
 
-func (n *Node) startListener(l ListenerConfig) {
+func (n *Node) startListener(l ListenerConfig) error {
+	// Create listener if none is provided
+	if l.Listener == nil {
+		listenConfig := net.ListenConfig{}
+		if l.ReuseAddress {
+			listenConfig.Control = socketControl
+		}
+		listener, err := listenConfig.Listen(context.Background(), l.ListenNetwork, l.ListenAddress)
+		if err != nil {
+			return fmt.Errorf("failed to open listening socket: %s", err)
+		}
+		l.Listener = listener
+	}
+	// Build connection options
 	defaultConnOpts := []ouroboros.ConnectionOptionFunc{
 		ouroboros.WithNetworkMagic(n.config.networkMagic),
 		ouroboros.WithNodeToNode(!l.UseNtC),
 		ouroboros.WithServer(true),
+		ouroboros.WithPeerSharing(n.config.peerSharing),
 	}
 	if l.UseNtC {
 		// Node-to-client
@@ -49,54 +66,59 @@ func (n *Node) startListener(l ListenerConfig) {
 		// Node-to-node
 		defaultConnOpts = append(
 			defaultConnOpts,
-			// Peer sharing
-			ouroboros.WithPeerSharing(n.config.peerSharing),
 			ouroboros.WithPeerSharingConfig(
 				peersharing.NewConfig(
-					peersharing.WithShareRequestFunc(n.peersharingShareRequest),
+					mergeConnOpts(
+						n.peersharingServerConnOpts(),
+					)...,
 				),
 			),
-			// TxSubmission
 			ouroboros.WithTxSubmissionConfig(
 				txsubmission.NewConfig(
-					txsubmission.WithInitFunc(n.txsubmissionServerInit),
+					mergeConnOpts(
+						n.txsubmissionServerConnOpts(),
+					)...,
 				),
 			),
-			// ChainSync
 			ouroboros.WithChainSyncConfig(
 				chainsync.NewConfig(
-					chainsync.WithFindIntersectFunc(n.chainsyncServerFindIntersect),
-					chainsync.WithRequestNextFunc(n.chainsyncServerRequestNext),
+					mergeConnOpts(
+						n.chainsyncServerConnOpts(),
+					)...,
 				),
 			),
-			// BlockFetch
 			ouroboros.WithBlockFetchConfig(
 				blockfetch.NewConfig(
-					blockfetch.WithRequestRangeFunc(n.blockfetchServerRequestRange),
+					mergeConnOpts(
+						n.blockfetchServerConnOpts(),
+					)...,
 				),
 			),
 		)
 	}
-	for {
-		// Accept connection
-		conn, err := l.Listener.Accept()
-		if err != nil {
-			n.config.logger.Error(fmt.Sprintf("accept failed: %s", err))
-			continue
+	go func() {
+		for {
+			// Accept connection
+			conn, err := l.Listener.Accept()
+			if err != nil {
+				n.config.logger.Error(fmt.Sprintf("accept failed: %s", err))
+				continue
+			}
+			n.config.logger.Info(fmt.Sprintf("accepted connection from %s", conn.RemoteAddr()))
+			// Setup Ouroboros connection
+			connOpts := append(
+				defaultConnOpts,
+				ouroboros.WithConnection(conn),
+			)
+			oConn, err := ouroboros.NewConnection(connOpts...)
+			if err != nil {
+				n.config.logger.Error(fmt.Sprintf("failed to setup connection: %s", err))
+				continue
+			}
+			// Add to connection manager
+			// TODO: add tags for connection for later tracking
+			n.connManager.AddConnection(oConn)
 		}
-		n.config.logger.Info(fmt.Sprintf("accepted connection from %s", conn.RemoteAddr()))
-		// Setup Ouroboros connection
-		connOpts := append(
-			defaultConnOpts,
-			ouroboros.WithConnection(conn),
-		)
-		oConn, err := ouroboros.NewConnection(connOpts...)
-		if err != nil {
-			n.config.logger.Error(fmt.Sprintf("failed to setup connection: %s", err))
-			continue
-		}
-		// Add to connection manager
-		// TODO: add tags for connection for later tracking
-		n.connManager.AddConnection(oConn)
-	}
+	}()
+	return nil
 }
