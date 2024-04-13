@@ -56,12 +56,16 @@ func (n *Node) startListener(l ListenerConfig) error {
 	}
 	if l.UseNtC {
 		// Node-to-client
-		defaultConnOpts = append(
-			defaultConnOpts,
-			// TODO: add localtxsubmission
-			// TODO: add localstatequery
-			// TODO: add localtxmonitor
-		)
+		// TODO: uncomment once we take care of any of the below TODO items
+		// This is disabled to stop lint errors about the append being an effective no-op
+		/*
+			defaultConnOpts = append(
+				defaultConnOpts,
+				// TODO: add localtxsubmission
+				// TODO: add localstatequery
+				// TODO: add localtxmonitor
+			)
+		*/
 	} else {
 		// Node-to-node
 		defaultConnOpts = append(
