@@ -69,15 +69,6 @@ func (n *Node) startOutboundConnections() {
 
 }
 
-/*
-func (n *Node) getOutboundConn(connId ouroboros.ConnectionId) (outboundPeer, bool) {
-	n.outboundConnsMutex.Lock()
-	defer n.outboundConnsMutex.Unlock()
-	conn, ok := n.outboundConns[connId]
-	return conn, ok
-}
-*/
-
 func (n *Node) createOutboundConnection(peer outboundPeer) error {
 	var clientAddr net.Addr
 	dialer := net.Dialer{
@@ -161,7 +152,10 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 			return err
 		}
 	}
-	// TODO: start txsubmission client
+	// Start txsubmission client
+	if err := n.txsubmissionClientStart(oConn.Id()); err != nil {
+		return err
+	}
 	return nil
 }
 

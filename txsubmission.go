@@ -15,10 +15,16 @@
 package node
 
 import (
+	"encoding/hex"
 	"fmt"
+	"log/slog"
+	"time"
 
+	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/ledger"
+	"github.com/blinklabs-io/gouroboros/protocol/txsubmission"
 	otxsubmission "github.com/blinklabs-io/gouroboros/protocol/txsubmission"
+	"github.com/blinklabs-io/node/mempool"
 )
 
 const (
@@ -33,16 +39,23 @@ func (n *Node) txsubmissionServerConnOpts() []otxsubmission.TxSubmissionOptionFu
 
 func (n *Node) txsubmissionClientConnOpts() []otxsubmission.TxSubmissionOptionFunc {
 	return []otxsubmission.TxSubmissionOptionFunc{
-		// TODO
-		/*
-			txsubmission.WithRequestTxIdsFunc(
-				n.txsubmissionClientRequestTxIds,
-			),
-			txsubmission.WithRequestTxsFunc(
-				n.txsubmissionClientRequestTxs,
-			),
-		*/
+		txsubmission.WithRequestTxIdsFunc(n.txsubmissionClientRequestTxIds),
+		txsubmission.WithRequestTxsFunc(n.txsubmissionClientRequestTxs),
 	}
+}
+
+func (n *Node) txsubmissionClientStart(connId ouroboros.ConnectionId) error {
+	// Register mempool consumer
+	// We don't bother capturing the consumer because we can easily look it up later by connection ID
+	_ = n.mempool.AddConsumer(connId)
+	// Start TxSubmission loop
+	conn := n.connManager.GetConnectionById(connId)
+	if conn == nil {
+		return fmt.Errorf("failed to lookup connection ID: %s", connId.String())
+	}
+	oConn := conn.Conn
+	oConn.TxSubmission().Client.Init()
+	return nil
 }
 
 func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
@@ -75,11 +88,106 @@ func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
 						n.config.logger.Error(fmt.Sprintf("failed to parse transaction CBOR: %s", err))
 						return
 					}
-					n.config.logger.Debug(fmt.Sprintf("received TX %s via TxSubmission", tx.Hash()))
-					// TODO: add hooks to do something with TX
+					n.config.logger.Debug(
+						"received TX via TxSubmission",
+						slog.String("tx_hash", tx.Hash()),
+						slog.String("connection_id", ctx.ConnectionId.String()),
+					)
+					// Add transaction to mempool
+					err = n.mempool.AddTransaction(
+						mempool.MempoolTransaction{
+							Hash:     tx.Hash(),
+							Type:     uint(txBody.EraId),
+							Cbor:     txBody.TxBody,
+							LastSeen: time.Now(),
+						},
+					)
+					if err != nil {
+						n.config.logger.Error(
+							fmt.Sprintf("failed to add TX %s to mempool: %s", tx.Hash(), err),
+						)
+						return
+					}
 				}
 			}
 		}
 	}()
 	return nil
+}
+
+func (n *Node) txsubmissionClientRequestTxIds(
+	ctx txsubmission.CallbackContext,
+	blocking bool,
+	ack uint16,
+	req uint16,
+) ([]txsubmission.TxIdAndSize, error) {
+	connId := ctx.ConnectionId
+	ret := []txsubmission.TxIdAndSize{}
+	consumer := n.mempool.Consumer(connId)
+	// Clear TX cache
+	if ack > 0 {
+		consumer.ClearCache()
+	}
+	// Get available TXs
+	var tmpTxs []*mempool.MempoolTransaction
+	for {
+		if blocking && len(tmpTxs) == 0 {
+			// Wait until we see a TX
+			tmpTx := consumer.NextTx(true)
+			if tmpTx == nil {
+				break
+			}
+			tmpTxs = append(tmpTxs, tmpTx)
+		} else {
+			// Return immediately if no TX is available
+			tmpTx := consumer.NextTx(false)
+			if tmpTx == nil {
+				break
+			}
+			tmpTxs = append(tmpTxs, tmpTx)
+		}
+	}
+	for _, tmpTx := range tmpTxs {
+		tmpTx := tmpTx
+		// Add to return value
+		txHashBytes, err := hex.DecodeString(tmpTx.Hash)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(
+			ret,
+			txsubmission.TxIdAndSize{
+				TxId: txsubmission.TxId{
+					EraId: uint16(tmpTx.Type),
+					TxId:  [32]byte(txHashBytes),
+				},
+				Size: uint32(len(tmpTx.Cbor)),
+			},
+		)
+	}
+	return ret, nil
+}
+
+func (n *Node) txsubmissionClientRequestTxs(
+	ctx txsubmission.CallbackContext,
+	txIds []txsubmission.TxId,
+) ([]txsubmission.TxBody, error) {
+	connId := ctx.ConnectionId
+	ret := []txsubmission.TxBody{}
+	consumer := n.mempool.Consumer(connId)
+	for _, txId := range txIds {
+		txHash := hex.EncodeToString(txId.TxId[:])
+		tx := consumer.GetTxFromCache(txHash)
+		if tx != nil {
+			ret = append(
+				ret,
+				txsubmission.TxBody{
+					EraId:  uint16(tx.Type),
+					TxBody: tx.Cbor,
+				},
+			)
+		}
+		consumer.RemoveTxFromCache(txHash)
+	}
+	return ret, nil
 }

@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/blinklabs-io/node/chainsync"
+	"github.com/blinklabs-io/node/mempool"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 )
@@ -29,12 +30,14 @@ type Node struct {
 	chainsyncState     *chainsync.State
 	outboundConns      map[ouroboros.ConnectionId]outboundPeer
 	outboundConnsMutex sync.Mutex
+	mempool            *mempool.Mempool
 }
 
 func New(cfg Config) (*Node, error) {
 	n := &Node{
 		config:         cfg,
 		chainsyncState: chainsync.NewState(),
+		mempool:        mempool.NewMempool(cfg.logger),
 		outboundConns:  make(map[ouroboros.ConnectionId]outboundPeer),
 	}
 	if err := n.configPopulateNetworkMagic(); err != nil {
@@ -64,7 +67,6 @@ func (n *Node) Run() error {
 		n.connManager.AddHostsFromTopology(n.config.topologyConfig)
 	}
 	n.startOutboundConnections()
-	// TODO
 
 	// Wait forever
 	select {}
@@ -84,6 +86,8 @@ func (n *Node) connectionManagerConnClosed(connId ouroboros.ConnectionId, err er
 	n.connManager.RemoveConnection(connId)
 	// Remove any chainsync client state
 	n.chainsyncState.RemoveClient(connId)
+	// Remove mempool consumer
+	n.mempool.RemoveConsumer(connId)
 	// Outbound connections
 	n.outboundConnsMutex.Lock()
 	if peer, ok := n.outboundConns[connId]; ok {
