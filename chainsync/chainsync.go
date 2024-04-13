@@ -82,6 +82,7 @@ type State struct {
 	clients      map[ouroboros.ConnectionId]*ChainsyncClientState
 	recentBlocks []ChainsyncBlock // TODO: replace with hook(s) for block storage/retrieval
 	subs         map[ouroboros.ConnectionId]chan ChainsyncBlock
+	clientConnId *ouroboros.ConnectionId // TODO: replace with handling of multiple chainsync clients
 }
 
 func NewState() *State {
@@ -123,6 +124,23 @@ func (s *State) RemoveClient(connId connection.ConnectionId) {
 		}
 		// Remove client state entry
 		delete(s.clients, connId)
+	}
+}
+
+// TODO: replace with handling of multiple chainsync clients
+func (s *State) GetClientConnId() *ouroboros.ConnectionId {
+	return s.clientConnId
+}
+
+// TODO: replace with handling of multiple chainsync clients
+func (s *State) SetClientConnId(connId ouroboros.ConnectionId) {
+	s.clientConnId = &connId
+}
+
+// TODO: replace with handling of multiple chainsync clients
+func (s *State) RemoveClientConnId(connId ouroboros.ConnectionId) {
+	if *s.clientConnId == connId {
+		s.clientConnId = nil
 	}
 }
 

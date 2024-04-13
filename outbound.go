@@ -151,7 +151,17 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 	n.outboundConnsMutex.Lock()
 	n.outboundConns[oConn.Id()] = peer
 	n.outboundConnsMutex.Unlock()
-	// TODO: start protocol clients (txsubmission/chainsync)
+	// TODO: replace this with handling for multiple chainsync clients
+	// Start chainsync client if we don't have another
+	n.chainsyncState.Lock()
+	defer n.chainsyncState.Unlock()
+	chainsyncClientConnId := n.chainsyncState.GetClientConnId()
+	if chainsyncClientConnId == nil {
+		if err := n.chainsyncClientStart(oConn.Id()); err != nil {
+			return err
+		}
+	}
+	// TODO: start txsubmission client
 	return nil
 }
 

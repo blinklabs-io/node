@@ -29,7 +29,6 @@ type Node struct {
 	chainsyncState     *chainsync.State
 	outboundConns      map[ouroboros.ConnectionId]outboundPeer
 	outboundConnsMutex sync.Mutex
-	// TODO
 }
 
 func New(cfg Config) (*Node, error) {
@@ -85,5 +84,13 @@ func (n *Node) connectionManagerConnClosed(connId ouroboros.ConnectionId, err er
 	n.connManager.RemoveConnection(connId)
 	// Remove any chainsync client state
 	n.chainsyncState.RemoveClient(connId)
-	// TODO: additional cleanup
+	// Outbound connections
+	n.outboundConnsMutex.Lock()
+	if peer, ok := n.outboundConns[connId]; ok {
+		// Release chainsync client
+		n.chainsyncState.RemoveClientConnId(connId)
+		// Reconnect outbound connection
+		go n.reconnectOutboundConnection(peer)
+	}
+	n.outboundConnsMutex.Unlock()
 }

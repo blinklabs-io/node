@@ -15,8 +15,13 @@
 package node
 
 import (
+	"encoding/hex"
+	"fmt"
+
+	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/node/chainsync"
 
+	"github.com/blinklabs-io/gouroboros/ledger"
 	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 )
@@ -30,12 +35,27 @@ func (n *Node) chainsyncServerConnOpts() []ochainsync.ChainSyncOptionFunc {
 
 func (n *Node) chainsyncClientConnOpts() []ochainsync.ChainSyncOptionFunc {
 	return []ochainsync.ChainSyncOptionFunc{
-		// TODO
-		/*
-			ochainsync.WithRollForwardFunc(n.chainsyncClientRollForward),
-			ochainsync.WithRollBackwardFunc(n.chainsyncClientRollBackward),
-		*/
+		ochainsync.WithRollForwardFunc(n.chainsyncClientRollForward),
+		ochainsync.WithRollBackwardFunc(n.chainsyncClientRollBackward),
 	}
+}
+
+func (n *Node) chainsyncClientStart(connId ouroboros.ConnectionId) error {
+	conn := n.connManager.GetConnectionById(connId)
+	if conn == nil {
+		return fmt.Errorf("failed to lookup connection ID: %s", connId.String())
+	}
+	oConn := conn.Conn
+	// TODO: use our recent blocks to build intersect points
+	tip, err := oConn.ChainSync().Client.GetCurrentTip()
+	if err != nil {
+		return err
+	}
+	intersectPoints := []ocommon.Point{tip.Point}
+	if err := oConn.ChainSync().Client.Sync(intersectPoints); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (n *Node) chainsyncServerFindIntersect(ctx ochainsync.CallbackContext, points []ocommon.Point) (ocommon.Point, ochainsync.Tip, error) {
@@ -133,4 +153,58 @@ func (n *Node) chainsyncServerSendNext(ctx ochainsync.CallbackContext, block cha
 		)
 	}
 	return err
+}
+
+func (n *Node) chainsyncClientRollBackward(
+	ctx ochainsync.CallbackContext,
+	point ocommon.Point,
+	tip ochainsync.Tip,
+) error {
+	n.chainsyncState.Rollback(
+		point.Slot,
+		hex.EncodeToString(point.Hash),
+	)
+	return nil
+}
+
+func (n *Node) chainsyncClientRollForward(
+	ctx ochainsync.CallbackContext,
+	blockType uint,
+	blockData interface{},
+	tip ochainsync.Tip,
+) error {
+	var blk ledger.Block
+	switch v := blockData.(type) {
+	case ledger.Block:
+		blk = v
+	case ledger.BlockHeader:
+		conn := n.connManager.GetConnectionById(ctx.ConnectionId)
+		if conn == nil {
+			return fmt.Errorf("failed to lookup connection ID: %s", ctx.ConnectionId.String())
+		}
+		oConn := conn.Conn
+		blockSlot := v.SlotNumber()
+		blockHash, _ := hex.DecodeString(v.Hash())
+		tmpBlock, err := oConn.BlockFetch().Client.GetBlock(ocommon.Point{Slot: blockSlot, Hash: blockHash})
+		if err != nil {
+			return err
+		}
+		blk = tmpBlock
+	default:
+		return fmt.Errorf("unexpected block data type: %T", v)
+	}
+	n.chainsyncState.AddBlock(
+		chainsync.ChainsyncBlock{
+			Point: chainsync.ChainsyncPoint{
+				SlotNumber: blk.SlotNumber(),
+				BlockHash:  blk.Hash(),
+				// TODO: figure out something for Byron. this won't work, since the
+				// block number isn't stored in the block itself
+				BlockNumber: blk.BlockNumber(),
+			},
+			Cbor: blk.Cbor(),
+			Type: blockType,
+		},
+	)
+	return nil
 }
