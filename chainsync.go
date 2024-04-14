@@ -20,6 +20,7 @@ import (
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/node/chainsync"
+	"github.com/blinklabs-io/node/database/models"
 
 	"github.com/blinklabs-io/gouroboros/ledger"
 	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
@@ -66,6 +67,7 @@ func (n *Node) chainsyncServerFindIntersect(
 	var retTip ochainsync.Tip
 	// Find intersection
 	var intersectPoint chainsync.ChainsyncPoint
+	// TODO: update this to use DB
 	for _, block := range n.chainsyncState.RecentBlocks() {
 		// Convert chainsync.ChainsyncPoint to ochainsync.Tip for easier comparison with ocommon.Point
 		blockPoint := block.Point.ToTip().Point
@@ -234,5 +236,23 @@ func (n *Node) chainsyncClientRollForward(
 			Type: blockType,
 		},
 	)
+	// TODO: move this elsewhere
+	// Add block to database
+	blkHash, err := hex.DecodeString(blk.Hash())
+	if err != nil {
+		return err
+	}
+	tmpBlock := models.Block{
+		Slot: blk.SlotNumber(),
+		Hash: blkHash,
+		// TODO: figure out something for Byron. this won't work, since the
+		// block number isn't stored in the block itself
+		Number: blk.BlockNumber(),
+		Type:   uint8(blockType),
+		Cbor:   blk.Cbor(),
+	}
+	if err := n.db.AddBlock(tmpBlock); err != nil {
+		return err
+	}
 	return nil
 }

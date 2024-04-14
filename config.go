@@ -23,6 +23,7 @@ import (
 )
 
 type Config struct {
+	dataDir            string
 	logger             *slog.Logger
 	listeners          []ListenerConfig
 	network            string
@@ -49,6 +50,9 @@ func (n *Node) configPopulateNetworkMagic() error {
 }
 
 func (n *Node) configValidate() error {
+	if n.config.dataDir == "" {
+		return fmt.Errorf("no data directory provided")
+	}
 	if n.config.networkMagic == 0 {
 		return fmt.Errorf(
 			"invalid network magic value: %d",
@@ -88,6 +92,13 @@ func NewConfig(opts ...ConfigOptionFunc) Config {
 		opt(&c)
 	}
 	return c
+}
+
+// WithDataDir specifies the data directory to use. This value must be provided
+func WithDataDir(dataDir string) ConfigOptionFunc {
+	return func(c *Config) {
+		c.dataDir = dataDir
+	}
 }
 
 // WithLogger specifies the logger to use. This defaults to discarding log output

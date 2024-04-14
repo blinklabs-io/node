@@ -126,6 +126,7 @@ func (s *State) Tip() ChainsyncPoint {
 	return s.tip
 }
 
+// TODO: remove this
 func (s *State) RecentBlocks() []ChainsyncBlock {
 	// TODO: replace with hook to get recent blocks
 	return s.recentBlocks[:]
@@ -184,6 +185,7 @@ func (s *State) sub(key ouroboros.ConnectionId) chan ChainsyncBlock {
 		s.subs = make(map[ouroboros.ConnectionId]chan ChainsyncBlock)
 	}
 	s.subs[key] = tmpChan
+	// TODO: update this to use DB
 	// Send all current blocks
 	for _, block := range s.recentBlocks {
 		tmpChan <- block
@@ -198,18 +200,20 @@ func (s *State) unsub(key ouroboros.ConnectionId) {
 	}
 }
 
-func (s *State) AddBlock(block ChainsyncBlock) {
+func (s *State) AddBlock(block ChainsyncBlock) error {
 	s.Lock()
 	defer s.Unlock()
-	// TODO: add hooks for storing new blocks
+	// TODO: remove this
 	s.recentBlocks = append(
 		s.recentBlocks,
 		block,
 	)
+	// Uodate metrics
 	blockNum_int.Set(float64(block.Point.BlockNumber))
 	slotNum_int.Set(float64(block.Point.SlotNumber))
 	// Update tip
 	s.tip = block.Point
+	// TODO: remove this
 	// Prune older blocks
 	if len(s.recentBlocks) > maxRecentBlocks {
 		s.recentBlocks = s.recentBlocks[len(s.recentBlocks)-maxRecentBlocks:]
@@ -230,11 +234,13 @@ func (s *State) AddBlock(block ChainsyncBlock) {
 			},
 		),
 	)
+	return nil
 }
 
 func (s *State) Rollback(slot uint64, hash string) {
 	s.Lock()
 	defer s.Unlock()
+	// TODO: update to use DB
 	// TODO: add hook for getting recent blocks
 	// Remove recent blocks newer than the rollback block
 	for idx, block := range s.recentBlocks {

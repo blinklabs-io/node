@@ -32,6 +32,8 @@ func Run(logger *slog.Logger) error {
 	n, err := node.New(
 		node.NewConfig(
 			node.WithLogger(logger),
+			// TODO: change this before merging PR
+			node.WithDataDir("/tmp/block-data"),
 			// TODO: make this configurable
 			node.WithNetwork("preview"),
 			node.WithListeners(

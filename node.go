@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/blinklabs-io/node/chainsync"
+	"github.com/blinklabs-io/node/database"
 	"github.com/blinklabs-io/node/event"
 	"github.com/blinklabs-io/node/mempool"
 
@@ -35,6 +36,7 @@ type Node struct {
 	outboundConns      map[ouroboros.ConnectionId]outboundPeer
 	outboundConnsMutex sync.Mutex
 	mempool            *mempool.Mempool
+	db                 *database.Database
 	shutdownFuncs      []func(context.Context) error
 }
 
@@ -63,6 +65,15 @@ func (n *Node) Run() error {
 			return err
 		}
 	}
+	// Load databases
+	db, err := database.New(
+		n.config.dataDir,
+		n.config.logger,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to load database: %w", err)
+	}
+	n.db = db
 	// Configure connection manager
 	n.connManager = ouroboros.NewConnectionManager(
 		ouroboros.ConnectionManagerConfig{
