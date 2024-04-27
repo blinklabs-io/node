@@ -34,7 +34,11 @@ func (n *Node) blockfetchClientConnOpts() []oblockfetch.BlockFetchOptionFunc {
 	}
 }
 
-func (n *Node) blockfetchServerRequestRange(ctx oblockfetch.CallbackContext, start ocommon.Point, end ocommon.Point) error {
+func (n *Node) blockfetchServerRequestRange(
+	ctx oblockfetch.CallbackContext,
+	start ocommon.Point,
+	end ocommon.Point,
+) error {
 	// TODO: check if we have requested block range available and send NoBlocks if not
 	// Start async process to send requested block range
 	go func() {

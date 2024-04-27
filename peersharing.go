@@ -30,7 +30,10 @@ func (n *Node) peersharingClientConnOpts() []opeersharing.PeerSharingOptionFunc 
 	}
 }
 
-func (n *Node) peersharingShareRequest(ctx opeersharing.CallbackContext, amount int) ([]opeersharing.PeerAddress, error) {
+func (n *Node) peersharingShareRequest(
+	ctx opeersharing.CallbackContext,
+	amount int,
+) ([]opeersharing.PeerAddress, error) {
 	// TODO: add hooks for getting peers to share
 	return []opeersharing.PeerAddress{}, nil
 }

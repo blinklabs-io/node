@@ -58,7 +58,10 @@ func (n *Node) chainsyncClientStart(connId ouroboros.ConnectionId) error {
 	return nil
 }
 
-func (n *Node) chainsyncServerFindIntersect(ctx ochainsync.CallbackContext, points []ocommon.Point) (ocommon.Point, ochainsync.Tip, error) {
+func (n *Node) chainsyncServerFindIntersect(
+	ctx ochainsync.CallbackContext,
+	points []ocommon.Point,
+) (ocommon.Point, ochainsync.Tip, error) {
 	var retPoint ocommon.Point
 	var retTip ochainsync.Tip
 	// Find intersection
@@ -95,9 +98,14 @@ func (n *Node) chainsyncServerFindIntersect(ctx ochainsync.CallbackContext, poin
 	return retPoint, retTip, nil
 }
 
-func (n *Node) chainsyncServerRequestNext(ctx ochainsync.CallbackContext) error {
+func (n *Node) chainsyncServerRequestNext(
+	ctx ochainsync.CallbackContext,
+) error {
 	// Create/retrieve chainsync state for connection
-	clientState := n.chainsyncState.AddClient(ctx.ConnectionId, n.chainsyncState.Tip())
+	clientState := n.chainsyncState.AddClient(
+		ctx.ConnectionId,
+		n.chainsyncState.Tip(),
+	)
 	if clientState.NeedsInitialRollback {
 		err := ctx.Server.RollBackward(
 			clientState.Cursor.ToTip().Point,
@@ -137,7 +145,10 @@ func (n *Node) chainsyncServerRequestNext(ctx ochainsync.CallbackContext) error 
 	return nil
 }
 
-func (n *Node) chainsyncServerSendNext(ctx ochainsync.CallbackContext, block chainsync.ChainsyncBlock) error {
+func (n *Node) chainsyncServerSendNext(
+	ctx ochainsync.CallbackContext,
+	block chainsync.ChainsyncBlock,
+) error {
 	var err error
 	if block.Rollback {
 		err = ctx.Server.RollBackward(

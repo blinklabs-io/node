@@ -72,9 +72,18 @@ func (n *Node) Run() error {
 	select {}
 }
 
-func (n *Node) connectionManagerConnClosed(connId ouroboros.ConnectionId, err error) {
+func (n *Node) connectionManagerConnClosed(
+	connId ouroboros.ConnectionId,
+	err error,
+) {
 	if err != nil {
-		n.config.logger.Error(fmt.Sprintf("unexpected connection failure: %s: %s", connId.String(), err))
+		n.config.logger.Error(
+			fmt.Sprintf(
+				"unexpected connection failure: %s: %s",
+				connId.String(),
+				err,
+			),
+		)
 	} else {
 		n.config.logger.Info(fmt.Sprintf("connection closed: %s", connId.String()))
 	}

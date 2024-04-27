@@ -123,7 +123,10 @@ func (m *Mempool) removeExpired() {
 		if tx.LastSeen.Before(expiredBefore) {
 			m.removeTransaction(tx.Hash)
 			m.logger.Debug(
-				fmt.Sprintf("removed expired transaction %s from mempool", tx.Hash),
+				fmt.Sprintf(
+					"removed expired transaction %s from mempool",
+					tx.Hash,
+				),
 			)
 		}
 	}
@@ -148,7 +151,10 @@ func (m *Mempool) AddTransaction(tx MempoolTransaction) error {
 	if existingTx != nil {
 		tx.LastSeen = time.Now()
 		m.logger.Debug(
-			fmt.Sprintf("updated last seen for transaction %s in mempool", tx.Hash),
+			fmt.Sprintf(
+				"updated last seen for transaction %s in mempool",
+				tx.Hash,
+			),
 		)
 		return nil
 	}

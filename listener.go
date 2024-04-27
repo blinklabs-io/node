@@ -41,7 +41,11 @@ func (n *Node) startListener(l ListenerConfig) error {
 		if l.ReuseAddress {
 			listenConfig.Control = socketControl
 		}
-		listener, err := listenConfig.Listen(context.Background(), l.ListenNetwork, l.ListenAddress)
+		listener, err := listenConfig.Listen(
+			context.Background(),
+			l.ListenNetwork,
+			l.ListenAddress,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to open listening socket: %s", err)
 		}
@@ -108,7 +112,9 @@ func (n *Node) startListener(l ListenerConfig) error {
 				n.config.logger.Error(fmt.Sprintf("accept failed: %s", err))
 				continue
 			}
-			n.config.logger.Info(fmt.Sprintf("accepted connection from %s", conn.RemoteAddr()))
+			n.config.logger.Info(
+				fmt.Sprintf("accepted connection from %s", conn.RemoteAddr()),
+			)
 			// Setup Ouroboros connection
 			connOpts := append(
 				defaultConnOpts,
@@ -116,7 +122,9 @@ func (n *Node) startListener(l ListenerConfig) error {
 			)
 			oConn, err := ouroboros.NewConnection(connOpts...)
 			if err != nil {
-				n.config.logger.Error(fmt.Sprintf("failed to setup connection: %s", err))
+				n.config.logger.Error(
+					fmt.Sprintf("failed to setup connection: %s", err),
+				)
 				continue
 			}
 			// Add to connection manager

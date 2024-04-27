@@ -32,6 +32,9 @@ func newConsumer() *MempoolConsumer {
 }
 
 func (m *MempoolConsumer) NextTx(blocking bool) *MempoolTransaction {
+	if m == nil {
+		return nil
+	}
 	var ret *MempoolTransaction
 	if blocking {
 		// Wait until a transaction is available
@@ -59,28 +62,41 @@ func (m *MempoolConsumer) NextTx(blocking bool) *MempoolTransaction {
 }
 
 func (m *MempoolConsumer) GetTxFromCache(hash string) *MempoolTransaction {
-	m.cacheMutex.Lock()
-	defer m.cacheMutex.Unlock()
-	return m.cache[hash]
+	if m != nil {
+		m.cacheMutex.Lock()
+		defer m.cacheMutex.Unlock()
+		return m.cache[hash]
+	}
+	var ret *MempoolTransaction
+	return ret
 }
 
 func (m *MempoolConsumer) ClearCache() {
-	m.cacheMutex.Lock()
-	defer m.cacheMutex.Unlock()
-	m.cache = make(map[string]*MempoolTransaction)
+	if m != nil {
+		m.cacheMutex.Lock()
+		defer m.cacheMutex.Unlock()
+		m.cache = make(map[string]*MempoolTransaction)
+	}
 }
 
 func (m *MempoolConsumer) RemoveTxFromCache(hash string) {
-	m.cacheMutex.Lock()
-	defer m.cacheMutex.Unlock()
-	delete(m.cache, hash)
+	if m != nil {
+		m.cacheMutex.Lock()
+		defer m.cacheMutex.Unlock()
+		delete(m.cache, hash)
+	}
 }
 
 func (m *MempoolConsumer) stop() {
-	close(m.txChan)
+	if m != nil {
+		close(m.txChan)
+	}
 }
 
 func (m *MempoolConsumer) pushTx(tx *MempoolTransaction, wait bool) bool {
+	if m == nil {
+		return false
+	}
 	if wait {
 		// Block on write to channel
 		m.txChan <- tx
