@@ -64,9 +64,14 @@ func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
 		for {
 			// Request available TX IDs (era and TX hash) and sizes
 			// We make the request blocking to avoid looping on our side
-			txIds, err := ctx.Server.RequestTxIds(true, txsubmissionRequestTxIdsCount)
+			txIds, err := ctx.Server.RequestTxIds(
+				true,
+				txsubmissionRequestTxIdsCount,
+			)
 			if err != nil {
-				n.config.logger.Error(fmt.Sprintf("failed to request TxIds: %s", err))
+				n.config.logger.Error(
+					fmt.Sprintf("failed to request TxIds: %s", err),
+				)
 				return
 			}
 			if len(txIds) > 0 {
@@ -78,14 +83,24 @@ func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
 				// Request TX content for TxIds from above
 				txs, err := ctx.Server.RequestTxs(requestTxIds)
 				if err != nil {
-					n.config.logger.Error(fmt.Sprintf("failed to request Txs: %s", err))
+					n.config.logger.Error(
+						fmt.Sprintf("failed to request Txs: %s", err),
+					)
 					return
 				}
 				for _, txBody := range txs {
 					// Decode TX from CBOR
-					tx, err := ledger.NewTransactionFromCbor(uint(txBody.EraId), txBody.TxBody)
+					tx, err := ledger.NewTransactionFromCbor(
+						uint(txBody.EraId),
+						txBody.TxBody,
+					)
 					if err != nil {
-						n.config.logger.Error(fmt.Sprintf("failed to parse transaction CBOR: %s", err))
+						n.config.logger.Error(
+							fmt.Sprintf(
+								"failed to parse transaction CBOR: %s",
+								err,
+							),
+						)
 						return
 					}
 					n.config.logger.Debug(
@@ -104,7 +119,11 @@ func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
 					)
 					if err != nil {
 						n.config.logger.Error(
-							fmt.Sprintf("failed to add TX %s to mempool: %s", tx.Hash(), err),
+							fmt.Sprintf(
+								"failed to add TX %s to mempool: %s",
+								tx.Hash(),
+								err,
+							),
 						)
 						return
 					}

@@ -24,7 +24,12 @@ import (
 func socketControl(network, address string, c syscall.RawConn) error {
 	var innerErr error
 	err := c.Control(func(fd uintptr) {
-		err := unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+		err := unix.SetsockoptInt(
+			int(fd),
+			unix.SOL_SOCKET,
+			unix.SO_REUSEADDR,
+			1,
+		)
 		if err != nil {
 			innerErr = err
 			return

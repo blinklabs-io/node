@@ -48,7 +48,10 @@ func (n *Node) configPopulateNetworkMagic() error {
 
 func (n *Node) configValidate() error {
 	if n.config.networkMagic == 0 {
-		return fmt.Errorf("invalid network magic value: %d", n.config.networkMagic)
+		return fmt.Errorf(
+			"invalid network magic value: %d",
+			n.config.networkMagic,
+		)
 	}
 	if len(n.config.listeners) == 0 {
 		return fmt.Errorf("no listeners defined")
@@ -60,7 +63,9 @@ func (n *Node) configValidate() error {
 		if listener.ListenNetwork != "" && listener.ListenAddress != "" {
 			continue
 		}
-		return fmt.Errorf("listener must provide net.Listener or listen network/address values")
+		return fmt.Errorf(
+			"listener must provide net.Listener or listen network/address values",
+		)
 	}
 	return nil
 }
@@ -126,7 +131,9 @@ func WithOutboundSourcePort(port int) ConfigOptionFunc {
 }
 
 // WithTopologyConfig specifies an ouroboros.TopologyConfig to use for outbound peers
-func WithTopologyConfig(topologyConfig *ouroboros.TopologyConfig) ConfigOptionFunc {
+func WithTopologyConfig(
+	topologyConfig *ouroboros.TopologyConfig,
+) ConfigOptionFunc {
 	return func(c *Config) {
 		c.topologyConfig = topologyConfig
 	}

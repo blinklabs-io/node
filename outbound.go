@@ -42,16 +42,25 @@ type outboundPeer struct {
 func (n *Node) startOutboundConnections() {
 	var tmpHosts []string
 	for _, host := range n.config.topologyConfig.Producers {
-		tmpHosts = append(tmpHosts, net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))))
+		tmpHosts = append(
+			tmpHosts,
+			net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))),
+		)
 	}
 	for _, localRoot := range n.config.topologyConfig.LocalRoots {
 		for _, host := range localRoot.AccessPoints {
-			tmpHosts = append(tmpHosts, net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))))
+			tmpHosts = append(
+				tmpHosts,
+				net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))),
+			)
 		}
 	}
 	for _, publicRoot := range n.config.topologyConfig.PublicRoots {
 		for _, host := range publicRoot.AccessPoints {
-			tmpHosts = append(tmpHosts, net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))))
+			tmpHosts = append(
+				tmpHosts,
+				net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))),
+			)
 		}
 	}
 	// Start outbound connections
@@ -60,7 +69,11 @@ func (n *Node) startOutboundConnections() {
 		go func(peer outboundPeer) {
 			if err := n.createOutboundConnection(peer); err != nil {
 				n.config.logger.Error(
-					fmt.Sprintf("failed to establish connection to %s: %s", peer.Address, err),
+					fmt.Sprintf(
+						"failed to establish connection to %s: %s",
+						peer.Address,
+						err,
+					),
 				)
 				go n.reconnectOutboundConnection(peer)
 			}
@@ -77,7 +90,10 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 	if n.config.outboundSourcePort > 0 {
 		// Setup connection to use our listening port as the source port
 		// This is required for peer sharing to be useful
-		clientAddr, _ = net.ResolveTCPAddr("tcp", fmt.Sprintf(":%d", n.config.outboundSourcePort))
+		clientAddr, _ = net.ResolveTCPAddr(
+			"tcp",
+			fmt.Sprintf(":%d", n.config.outboundSourcePort),
+		)
 		dialer.LocalAddr = clientAddr
 		dialer.Control = socketControl
 	}
@@ -167,12 +183,20 @@ func (n *Node) reconnectOutboundConnection(peer outboundPeer) {
 			peer.ReconnectDelay = peer.ReconnectDelay * reconnectBackoffFactor
 		}
 		n.config.logger.Info(
-			fmt.Sprintf("delaying %s before reconnecting to %s", peer.ReconnectDelay, peer.Address),
+			fmt.Sprintf(
+				"delaying %s before reconnecting to %s",
+				peer.ReconnectDelay,
+				peer.Address,
+			),
 		)
 		time.Sleep(peer.ReconnectDelay)
 		if err := n.createOutboundConnection(peer); err != nil {
 			n.config.logger.Error(
-				fmt.Sprintf("failed to establish connection to %s: %s", peer.Address, err),
+				fmt.Sprintf(
+					"failed to establish connection to %s: %s",
+					peer.Address,
+					err,
+				),
 			)
 			continue
 		}

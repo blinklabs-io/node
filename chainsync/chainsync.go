@@ -100,7 +100,10 @@ func (s *State) RecentBlocks() []ChainsyncBlock {
 	return s.recentBlocks[:]
 }
 
-func (s *State) AddClient(connId connection.ConnectionId, cursor ChainsyncPoint) *ChainsyncClientState {
+func (s *State) AddClient(
+	connId connection.ConnectionId,
+	cursor ChainsyncPoint,
+) *ChainsyncClientState {
 	s.Lock()
 	defer s.Unlock()
 	// Create initial chainsync state for connection

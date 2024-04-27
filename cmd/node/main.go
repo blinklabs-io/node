@@ -61,8 +61,10 @@ func main() {
 	}
 
 	// Global flags
-	rootCmd.PersistentFlags().BoolVarP(&globalFlags.debug, "debug", "D", false, "enable debug logging")
-	rootCmd.PersistentFlags().BoolVarP(&globalFlags.version, "version", "", false, "show version and exit")
+	rootCmd.PersistentFlags().
+		BoolVarP(&globalFlags.debug, "debug", "D", false, "enable debug logging")
+	rootCmd.PersistentFlags().
+		BoolVarP(&globalFlags.version, "version", "", false, "show version and exit")
 
 	// Execute cobra command
 	if err := rootCmd.Execute(); err != nil {
