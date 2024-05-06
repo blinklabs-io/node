@@ -5,7 +5,7 @@ go 1.21.5
 require (
 	github.com/blinklabs-io/gouroboros v0.80.0
 	github.com/spf13/cobra v1.8.0
-	golang.org/x/sys v0.19.0
+	golang.org/x/sys v0.20.0
 )
 
 require (
