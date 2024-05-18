@@ -29,7 +29,7 @@ func Run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	logger.Info("listening for connections on :3000")
+	logger.Info("listening for ouroboros node-to-node connections on :3000")
 	n, err := node.New(
 		node.NewConfig(
 			node.WithLogger(logger),
@@ -60,6 +60,11 @@ func Run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	go func() {
+		if err := n.StartMetrics(logger); err != nil {
+			logger.Error("failed to start metrics listener %v", err)
+		}
+	}()
 	if err := n.Run(); err != nil {
 		return err
 	}
