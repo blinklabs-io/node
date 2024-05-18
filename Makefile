@@ -20,6 +20,7 @@ build: $(BINARIES)
 
 # Builds and installs binary in ~/.local/bin
 install: build
+	mkdir -p $(HOME)/.local/bin
 	mv $(BINARIES) $(HOME)/.local/bin
 
 uninstall:
