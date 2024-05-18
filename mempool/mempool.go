@@ -23,11 +23,28 @@ import (
 	"time"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 const (
 	txsubmissionMempoolExpiration       = 1 * time.Hour
 	txSubmissionMempoolExpirationPeriod = 1 * time.Minute
+)
+
+var (
+	txsProcessedNum_int = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "cardano_node_metrics_txsProcessedNum_int",
+		Help: "total transactions processed",
+	})
+	txsInMempool_int = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "cardano_node_metrics_txsInMempool_int",
+		Help: "current count of mempool transactions",
+	})
+	mempoolBytes_int = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "cardano_node_metrics_mempoolBytes_int",
+		Help: "current size of mempool transactions in bytes",
+	})
 )
 
 type MempoolTransaction struct {
@@ -163,6 +180,9 @@ func (m *Mempool) AddTransaction(tx MempoolTransaction) error {
 	m.logger.Debug(
 		fmt.Sprintf("added transaction %s to mempool", tx.Hash),
 	)
+	txsProcessedNum_int.Inc()
+	txsInMempool_int.Inc()
+	mempoolBytes_int.Add(float64(len(tx.Cbor)))
 	// Send new TX to consumers that are ready for it
 	newTxIdx := len(m.transactions) - 1
 	for connId, consumerIdx := range m.consumerIndex {
@@ -215,6 +235,8 @@ func (m *Mempool) removeTransaction(hash string) bool {
 				txIdx,
 				txIdx+1,
 			)
+			txsInMempool_int.Dec()
+			mempoolBytes_int.Sub(float64(len(tx.Cbor)))
 			// Update consumer indexes to reflect removed TX
 			for connId, consumerIdx := range m.consumerIndex {
 				// Decrement consumer index if the consumer has reached the removed TX

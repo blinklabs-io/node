@@ -23,10 +23,23 @@ import (
 	"github.com/blinklabs-io/gouroboros/connection"
 	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 const (
 	maxRecentBlocks = 20 // Number of recent blocks to cache
+)
+
+var (
+	blockNum_int = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "cardano_node_metrics_blockNum_int",
+		Help: "current block number",
+	})
+	slotNum_int = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "cardano_node_metrics_slotNum_int",
+		Help: "current slot number",
+	})
 )
 
 type ChainsyncPoint struct {
@@ -179,6 +192,8 @@ func (s *State) AddBlock(block ChainsyncBlock) {
 		s.recentBlocks,
 		block,
 	)
+	blockNum_int.Set(float64(block.Point.BlockNumber))
+	slotNum_int.Set(float64(block.Point.SlotNumber))
 	// Prune older blocks
 	if len(s.recentBlocks) > maxRecentBlocks {
 		s.recentBlocks = s.recentBlocks[len(s.recentBlocks)-maxRecentBlocks:]
