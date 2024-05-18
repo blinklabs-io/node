@@ -53,6 +53,7 @@ func main() {
 			)
 			slog.SetDefault(logger)
 			// Run node
+			logger.Info(fmt.Sprintf("running: %s version %s", programName, version.GetVersionString()))
 			if err := node.Run(logger); err != nil {
 				slog.Error(err.Error())
 				os.Exit(1)

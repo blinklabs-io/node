@@ -23,7 +23,6 @@ import (
 )
 
 func Run(logger *slog.Logger) error {
-	logger.Info("running node")
 	// TODO: make this configurable
 	l, err := net.Listen("tcp", ":3000")
 	if err != nil {
