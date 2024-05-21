@@ -171,6 +171,11 @@ func (n *Node) chainsyncClientRollBackward(
 	point ocommon.Point,
 	tip ochainsync.Tip,
 ) error {
+	n.config.logger.Info(fmt.Sprintf(
+		"rollback: slot: %d, hash: %s",
+		point.Slot,
+		hex.EncodeToString(point.Hash),
+	))
 	n.chainsyncState.Rollback(
 		point.Slot,
 		hex.EncodeToString(point.Hash),
@@ -204,6 +209,11 @@ func (n *Node) chainsyncClientRollForward(
 	default:
 		return fmt.Errorf("unexpected block data type: %T", v)
 	}
+	n.config.logger.Info(fmt.Sprintf(
+		"chain extended, new tip: %s at slot %d",
+		blk.Hash(),
+		blk.SlotNumber(),
+	))
 	n.chainsyncState.AddBlock(
 		chainsync.ChainsyncBlock{
 			Point: chainsync.ChainsyncPoint{

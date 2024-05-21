@@ -24,11 +24,11 @@ import (
 
 func Run(logger *slog.Logger) error {
 	// TODO: make this configurable
-	l, err := net.Listen("tcp", ":3000")
+	l, err := net.Listen("tcp", ":3001")
 	if err != nil {
 		return err
 	}
-	logger.Info("listening for ouroboros node-to-node connections on :3000")
+	logger.Info("listening for ouroboros node-to-node connections on :3001")
 	n, err := node.New(
 		node.NewConfig(
 			node.WithLogger(logger),
@@ -60,7 +60,7 @@ func Run(logger *slog.Logger) error {
 		return err
 	}
 	go func() {
-		if err := n.StartMetrics(logger); err != nil {
+		if err := n.StartMetrics(); err != nil {
 			logger.Error("failed to start metrics listener %v", err)
 		}
 	}()
