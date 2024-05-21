@@ -15,15 +15,14 @@
 package node
 
 import (
-	"log/slog"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func (n *Node) StartMetrics(logger *slog.Logger) error {
+func (n *Node) StartMetrics() error {
 	http.Handle("/metrics", promhttp.Handler())
-	logger.Info("listening for prometheus metrics connections on :12798")
+	n.config.logger.Info("listening for prometheus metrics connections on :12798")
 	// TODO: make this configurable
 	err := http.ListenAndServe(":12798", nil)
 	if err != nil {
