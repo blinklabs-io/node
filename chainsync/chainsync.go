@@ -161,8 +161,6 @@ func (s *State) RemoveClientConnId(connId ouroboros.ConnectionId) {
 }
 
 func (s *State) sub(key ouroboros.ConnectionId) chan ChainsyncBlock {
-	s.Lock()
-	defer s.Unlock()
 	tmpChan := make(chan ChainsyncBlock, maxRecentBlocks)
 	if s.subs == nil {
 		s.subs = make(map[ouroboros.ConnectionId]chan ChainsyncBlock)
@@ -176,8 +174,6 @@ func (s *State) sub(key ouroboros.ConnectionId) chan ChainsyncBlock {
 }
 
 func (s *State) unsub(key ouroboros.ConnectionId) {
-	s.Lock()
-	defer s.Unlock()
 	if _, ok := s.subs[key]; ok {
 		close(s.subs[key])
 		delete(s.subs, key)
@@ -194,6 +190,8 @@ func (s *State) AddBlock(block ChainsyncBlock) {
 	)
 	blockNum_int.Set(float64(block.Point.BlockNumber))
 	slotNum_int.Set(float64(block.Point.SlotNumber))
+	// Update tip
+	s.tip = block.Point
 	// Prune older blocks
 	if len(s.recentBlocks) > maxRecentBlocks {
 		s.recentBlocks = s.recentBlocks[len(s.recentBlocks)-maxRecentBlocks:]
