@@ -117,10 +117,14 @@ func (n *Node) chainsyncServerRequestNext(
 		clientState.NeedsInitialRollback = false
 		return nil
 	}
+outerLoop:
 	for {
 		sentAwaitReply := false
 		select {
-		case block := <-clientState.BlockChan:
+		case block, ok := <-clientState.BlockChan:
+			if !ok {
+				break outerLoop
+			}
 			// Ignore blocks older than what we've already sent
 			if clientState.Cursor.SlotNumber >= block.Point.SlotNumber {
 				continue
@@ -133,7 +137,10 @@ func (n *Node) chainsyncServerRequestNext(
 			}
 			// Wait for next block and send
 			go func() {
-				block := <-clientState.BlockChan
+				block, ok := <-clientState.BlockChan
+				if !ok {
+					return
+				}
 				_ = n.chainsyncServerSendNext(ctx, block)
 			}()
 			sentAwaitReply = true
