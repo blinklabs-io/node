@@ -22,6 +22,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/blinklabs-io/node/event"
+
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -31,6 +33,21 @@ const (
 	txsubmissionMempoolExpiration       = 1 * time.Hour
 	txSubmissionMempoolExpirationPeriod = 1 * time.Minute
 )
+
+const (
+	AddTransactionEventType    event.EventType = "mempool.add_tx"
+	RemoveTransactionEventType event.EventType = "mempool.remove_tx"
+)
+
+type AddTransactionEvent struct {
+	Hash string
+	Body []byte
+	Type uint
+}
+
+type RemoveTransactionEvent struct {
+	Hash string
+}
 
 var (
 	txsProcessedNum_int = promauto.NewCounter(prometheus.CounterOpts{
@@ -57,6 +74,7 @@ type MempoolTransaction struct {
 type Mempool struct {
 	sync.Mutex
 	logger             *slog.Logger
+	eventBus           *event.EventBus
 	consumers          map[ouroboros.ConnectionId]*MempoolConsumer
 	consumersMutex     sync.Mutex
 	consumerIndex      map[ouroboros.ConnectionId]int
@@ -64,8 +82,9 @@ type Mempool struct {
 	transactions       []*MempoolTransaction
 }
 
-func NewMempool(logger *slog.Logger) *Mempool {
+func NewMempool(logger *slog.Logger, eventBus *event.EventBus) *Mempool {
 	m := &Mempool{
+		eventBus:  eventBus,
 		consumers: make(map[ouroboros.ConnectionId]*MempoolConsumer),
 	}
 	if logger == nil {
@@ -194,6 +213,18 @@ func (m *Mempool) AddTransaction(tx MempoolTransaction) error {
 			}
 		}
 	}
+	// Generate event
+	m.eventBus.Publish(
+		AddTransactionEventType,
+		event.NewEvent(
+			AddTransactionEventType,
+			AddTransactionEvent{
+				Hash: tx.Hash,
+				Type: tx.Type,
+				Body: tx.Cbor[:],
+			},
+		),
+	)
 	return nil
 }
 
@@ -246,6 +277,16 @@ func (m *Mempool) removeTransaction(hash string) bool {
 				m.consumerIndex[connId] = consumerIdx
 			}
 			m.consumerIndexMutex.Unlock()
+			// Generate event
+			m.eventBus.Publish(
+				RemoveTransactionEventType,
+				event.NewEvent(
+					RemoveTransactionEventType,
+					RemoveTransactionEvent{
+						Hash: tx.Hash,
+					},
+				),
+			)
 			return true
 		}
 	}

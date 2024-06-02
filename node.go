@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/blinklabs-io/node/chainsync"
+	"github.com/blinklabs-io/node/event"
 	"github.com/blinklabs-io/node/mempool"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
@@ -28,16 +29,19 @@ type Node struct {
 	config             Config
 	connManager        *ouroboros.ConnectionManager
 	chainsyncState     *chainsync.State
+	eventBus           *event.EventBus
 	outboundConns      map[ouroboros.ConnectionId]outboundPeer
 	outboundConnsMutex sync.Mutex
 	mempool            *mempool.Mempool
 }
 
 func New(cfg Config) (*Node, error) {
+	eventBus := event.NewEventBus()
 	n := &Node{
 		config:         cfg,
-		chainsyncState: chainsync.NewState(),
-		mempool:        mempool.NewMempool(cfg.logger),
+		chainsyncState: chainsync.NewState(eventBus),
+		eventBus:       eventBus,
+		mempool:        mempool.NewMempool(cfg.logger, eventBus),
 		outboundConns:  make(map[ouroboros.ConnectionId]outboundPeer),
 	}
 	if err := n.configPopulateNetworkMagic(); err != nil {

@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/blinklabs-io/node/event"
+
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/connection"
 	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
@@ -41,6 +43,19 @@ var (
 		Help: "current slot number",
 	})
 )
+
+const (
+	ChainsyncEventType event.EventType = "chainsync.event"
+)
+
+// ChainsyncEvent represents either a RollForward or RollBackward chainsync event.
+// We use a single event type for both to make synchronization easier.
+type ChainsyncEvent struct {
+	Point    ChainsyncPoint
+	Cbor     []byte
+	Type     uint
+	Rollback bool
+}
 
 type ChainsyncPoint struct {
 	SlotNumber  uint64
@@ -91,6 +106,7 @@ type ChainsyncClientState struct {
 
 type State struct {
 	sync.Mutex
+	eventBus     *event.EventBus
 	tip          ChainsyncPoint
 	clients      map[ouroboros.ConnectionId]*ChainsyncClientState
 	recentBlocks []ChainsyncBlock // TODO: replace with hook(s) for block storage/retrieval
@@ -98,9 +114,10 @@ type State struct {
 	clientConnId *ouroboros.ConnectionId // TODO: replace with handling of multiple chainsync clients
 }
 
-func NewState() *State {
+func NewState(eventBus *event.EventBus) *State {
 	return &State{
-		clients: make(map[ouroboros.ConnectionId]*ChainsyncClientState),
+		eventBus: eventBus,
+		clients:  make(map[ouroboros.ConnectionId]*ChainsyncClientState),
 	}
 }
 
@@ -196,10 +213,22 @@ func (s *State) AddBlock(block ChainsyncBlock) {
 	if len(s.recentBlocks) > maxRecentBlocks {
 		s.recentBlocks = s.recentBlocks[len(s.recentBlocks)-maxRecentBlocks:]
 	}
-	// Publish new block to subscribers
+	// Publish new block to chainsync subscribers
 	for _, pubChan := range s.subs {
 		pubChan <- block
 	}
+	// Generate event
+	s.eventBus.Publish(
+		ChainsyncEventType,
+		event.NewEvent(
+			ChainsyncEventType,
+			ChainsyncEvent{
+				Point: block.Point,
+				Type:  block.Type,
+				Cbor:  block.Cbor[:],
+			},
+		),
+	)
 }
 
 func (s *State) Rollback(slot uint64, hash string) {
@@ -213,7 +242,7 @@ func (s *State) Rollback(slot uint64, hash string) {
 			break
 		}
 	}
-	// Publish rollback to subscribers
+	// Publish rollback to chainsync subscribers
 	for _, pubChan := range s.subs {
 		pubChan <- ChainsyncBlock{
 			Rollback: true,
@@ -223,4 +252,18 @@ func (s *State) Rollback(slot uint64, hash string) {
 			},
 		}
 	}
+	// Generate event
+	s.eventBus.Publish(
+		ChainsyncEventType,
+		event.NewEvent(
+			ChainsyncEventType,
+			ChainsyncEvent{
+				Rollback: true,
+				Point: ChainsyncPoint{
+					SlotNumber: slot,
+					BlockHash:  hash,
+				},
+			},
+		),
+	)
 }
