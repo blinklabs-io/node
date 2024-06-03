@@ -3,7 +3,7 @@ module github.com/blinklabs-io/node
 go 1.21.5
 
 require (
-	github.com/blinklabs-io/gouroboros v0.85.0
+	github.com/blinklabs-io/gouroboros v0.86.0
 	github.com/prometheus/client_golang v1.19.1
 	github.com/spf13/cobra v1.8.0
 	golang.org/x/sys v0.20.0
@@ -13,8 +13,6 @@ require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cosmos/btcutil v1.0.5 // indirect
-	github.com/cosmos/cosmos-sdk v0.50.6 // indirect
 	github.com/fxamacker/cbor/v2 v2.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
