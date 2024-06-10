@@ -172,7 +172,7 @@ func (s *State) SetClientConnId(connId ouroboros.ConnectionId) {
 
 // TODO: replace with handling of multiple chainsync clients
 func (s *State) RemoveClientConnId(connId ouroboros.ConnectionId) {
-	if *s.clientConnId == connId {
+	if s.clientConnId != nil && *s.clientConnId == connId {
 		s.clientConnId = nil
 	}
 }
