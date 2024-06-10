@@ -112,10 +112,12 @@ func (m *Mempool) AddConsumer(connId ouroboros.ConnectionId) *MempoolConsumer {
 			nextTxIdx, ok := m.consumerIndex[connId]
 			if !ok {
 				// Our consumer has disappeared
+				m.consumerIndexMutex.Unlock()
 				return
 			}
 			if nextTxIdx >= len(m.transactions) {
 				// We've reached the current end of the mempool
+				m.consumerIndexMutex.Unlock()
 				return
 			}
 			nextTx := m.transactions[nextTxIdx]
