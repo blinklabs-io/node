@@ -167,6 +167,7 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 		if err := n.chainsyncClientStart(oConn.Id()); err != nil {
 			return err
 		}
+		n.chainsyncState.SetClientConnId(oConn.Id())
 	}
 	// Start txsubmission client
 	if err := n.txsubmissionClientStart(oConn.Id()); err != nil {
