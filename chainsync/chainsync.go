@@ -30,7 +30,8 @@ import (
 )
 
 const (
-	maxRecentBlocks = 20 // Number of recent blocks to cache
+	maxRecentBlocks       = 20 // Number of recent blocks to cache
+	clientBlockBufferSize = 50 // Size of per-client block buffer
 )
 
 var (
@@ -178,7 +179,7 @@ func (s *State) RemoveClientConnId(connId ouroboros.ConnectionId) {
 }
 
 func (s *State) sub(key ouroboros.ConnectionId) chan ChainsyncBlock {
-	tmpChan := make(chan ChainsyncBlock, maxRecentBlocks)
+	tmpChan := make(chan ChainsyncBlock, clientBlockBufferSize)
 	if s.subs == nil {
 		s.subs = make(map[ouroboros.ConnectionId]chan ChainsyncBlock)
 	}
