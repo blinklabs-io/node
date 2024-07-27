@@ -30,6 +30,8 @@ type Config struct {
 	peerSharing        bool
 	outboundSourcePort int
 	topologyConfig     *ouroboros.TopologyConfig
+	tracing            bool
+	tracingStdout      bool
 }
 
 // configPopulateNetworkMagic uses the named network (if specified) to determine the network magic value (if not specified)
@@ -136,5 +138,20 @@ func WithTopologyConfig(
 ) ConfigOptionFunc {
 	return func(c *Config) {
 		c.topologyConfig = topologyConfig
+	}
+}
+
+// WithTracing enables tracing. By default, spans are submitted to a HTTP(s) endpoint using OTLP. This can be configured
+// using the OTEL_EXPORTER_OTLP_* env vars documented in the README for [go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp]
+func WithTracing(tracing bool) ConfigOptionFunc {
+	return func(c *Config) {
+		c.tracing = tracing
+	}
+}
+
+// WithTracingStdout enables tracing output to stdout. This also requires tracing to enabled separately. This is mostly useful for debugging
+func WithTracingStdout(stdout bool) ConfigOptionFunc {
+	return func(c *Config) {
+		c.tracingStdout = stdout
 	}
 }

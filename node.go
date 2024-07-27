@@ -15,6 +15,8 @@
 package node
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -33,6 +35,7 @@ type Node struct {
 	outboundConns      map[ouroboros.ConnectionId]outboundPeer
 	outboundConnsMutex sync.Mutex
 	mempool            *mempool.Mempool
+	shutdownFuncs      []func(context.Context) error
 }
 
 func New(cfg Config) (*Node, error) {
@@ -54,6 +57,12 @@ func New(cfg Config) (*Node, error) {
 }
 
 func (n *Node) Run() error {
+	// Configure tracing
+	if n.config.tracing {
+		if err := n.setupTracing(); err != nil {
+			return err
+		}
+	}
 	// Configure connection manager
 	n.connManager = ouroboros.NewConnectionManager(
 		ouroboros.ConnectionManagerConfig{
@@ -74,6 +83,21 @@ func (n *Node) Run() error {
 
 	// Wait forever
 	select {}
+}
+
+func (n *Node) Stop() error {
+	// TODO: use a cancelable context and wait for it above to call shutdown
+	return n.shutdown()
+}
+
+func (n *Node) shutdown() error {
+	ctx := context.TODO()
+	var err error
+	for _, fn := range n.shutdownFuncs {
+		err = errors.Join(err, fn(ctx))
+	}
+	n.shutdownFuncs = nil
+	return err
 }
 
 func (n *Node) connectionManagerConnClosed(
