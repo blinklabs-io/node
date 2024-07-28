@@ -15,6 +15,7 @@
 package node
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strconv"
@@ -25,6 +26,8 @@ import (
 	"github.com/blinklabs-io/gouroboros/protocol/chainsync"
 	"github.com/blinklabs-io/gouroboros/protocol/peersharing"
 	"github.com/blinklabs-io/gouroboros/protocol/txsubmission"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -83,6 +86,12 @@ func (n *Node) startOutboundConnections() {
 }
 
 func (n *Node) createOutboundConnection(peer outboundPeer) error {
+	_, span := otel.Tracer("").Start(context.TODO(), "create outbound connection")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("peer.address", peer.Address),
+	)
+
 	var clientAddr net.Addr
 	dialer := net.Dialer{
 		Timeout: 10 * time.Second,

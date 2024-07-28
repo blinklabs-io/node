@@ -39,6 +39,8 @@ func Run(logger *slog.Logger) error {
 					Listener: l,
 				},
 			),
+			// TODO: make this configurable
+			node.WithTracing(true),
 			// TODO: replace with parsing topology file
 			node.WithTopologyConfig(
 				&ouroboros.TopologyConfig{
