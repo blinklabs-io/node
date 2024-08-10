@@ -23,6 +23,7 @@ import (
 	"github.com/blinklabs-io/node/chainsync"
 	"github.com/blinklabs-io/node/event"
 	"github.com/blinklabs-io/node/mempool"
+	"github.com/blinklabs-io/node/state"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 )
@@ -35,6 +36,7 @@ type Node struct {
 	outboundConns      map[ouroboros.ConnectionId]outboundPeer
 	outboundConnsMutex sync.Mutex
 	mempool            *mempool.Mempool
+	ledgerState        *state.LedgerState
 	shutdownFuncs      []func(context.Context) error
 }
 
@@ -63,6 +65,15 @@ func (n *Node) Run() error {
 			return err
 		}
 	}
+	// Load state
+	state, err := state.NewLedgerState(
+		n.config.dataDir,
+		n.config.logger,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to load state database: %w", err)
+	}
+	n.ledgerState = state
 	// Configure connection manager
 	n.connManager = ouroboros.NewConnectionManager(
 		ouroboros.ConnectionManagerConfig{

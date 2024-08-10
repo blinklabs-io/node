@@ -23,6 +23,7 @@ import (
 )
 
 type Config struct {
+	dataDir            string
 	logger             *slog.Logger
 	listeners          []ListenerConfig
 	network            string
@@ -88,6 +89,13 @@ func NewConfig(opts ...ConfigOptionFunc) Config {
 		opt(&c)
 	}
 	return c
+}
+
+// WithDataDir specifies the persistent data directory to use. The default is to store everything in memory
+func WithDataDir(dataDir string) ConfigOptionFunc {
+	return func(c *Config) {
+		c.dataDir = dataDir
+	}
 }
 
 // WithLogger specifies the logger to use. This defaults to discarding log output
