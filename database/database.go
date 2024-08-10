@@ -27,6 +27,7 @@ import (
 	badger "github.com/dgraph-io/badger/v4"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/plugin/opentelemetry/tracing"
 )
 
 type Database interface {
@@ -56,6 +57,10 @@ func (b *BaseDatabase) init() error {
 		// Create logger to throw away logs
 		// We do this so we don't have to add guards around every log operation
 		b.logger = slog.New(slog.NewJSONHandler(io.Discard, nil))
+	}
+	// Configure tracing for GORM
+	if err := b.metadata.Use(tracing.NewPlugin(tracing.WithoutMetrics())); err != nil {
+		return err
 	}
 	// Run GC periodically for Badger DB
 	b.blobGcTimer = time.NewTicker(5 * time.Minute)
