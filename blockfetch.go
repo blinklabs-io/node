@@ -40,25 +40,35 @@ func (n *Node) blockfetchServerRequestRange(
 	end ocommon.Point,
 ) error {
 	// TODO: check if we have requested block range available and send NoBlocks if not
+	chainIter, err := n.ledgerState.GetChainFromPoint(start)
+	if err != nil {
+		return err
+	}
 	// Start async process to send requested block range
 	go func() {
 		if err := ctx.Server.StartBatch(); err != nil {
 			return
 		}
-		for _, block := range n.chainsyncState.RecentBlocks() {
-			if block.Point.SlotNumber < start.Slot {
-				continue
-			}
-			if block.Point.SlotNumber > end.Slot {
+		for {
+			next, _ := chainIter.Next(false)
+			if next == nil {
 				break
 			}
-			blockBytes := block.Cbor[:]
+			if next.Block.Slot > end.Slot {
+				break
+			}
+			blockBytes := next.Block.Cbor[:]
 			err := ctx.Server.Block(
-				block.Type,
+				next.Block.Type,
 				blockBytes,
 			)
 			if err != nil {
+				// TODO: push this error somewhere
 				return
+			}
+			// Make sure we don't hang waiting for the next block if we've already hit the end
+			if next.Block.Slot == end.Slot {
+				break
 			}
 		}
 		if err := ctx.Server.BatchDone(); err != nil {

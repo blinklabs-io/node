@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
-	"github.com/blinklabs-io/node/chainsync"
 
 	"github.com/blinklabs-io/gouroboros/ledger"
 	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
@@ -62,38 +61,37 @@ func (n *Node) chainsyncServerFindIntersect(
 	ctx ochainsync.CallbackContext,
 	points []ocommon.Point,
 ) (ocommon.Point, ochainsync.Tip, error) {
+	n.ledgerState.RLock()
+	defer n.ledgerState.RUnlock()
 	var retPoint ocommon.Point
 	var retTip ochainsync.Tip
 	// Find intersection
-	var intersectPoint chainsync.ChainsyncPoint
-	for _, block := range n.chainsyncState.RecentBlocks() {
-		// Convert chainsync.ChainsyncPoint to ochainsync.Tip for easier comparison with ocommon.Point
-		blockPoint := block.Point.ToTip().Point
-		for _, point := range points {
-			if point.Slot != blockPoint.Slot {
-				continue
-			}
-			// Compare as string since we can't directly compare byte slices
-			if string(point.Hash) != string(blockPoint.Hash) {
-				continue
-			}
-			intersectPoint = block.Point
-			break
-		}
+	intersectPoint, err := n.ledgerState.GetIntersectPoint(points)
+	if err != nil {
+		return retPoint, retTip, err
 	}
 
 	// Populate return tip
-	retTip = n.chainsyncState.Tip().ToTip()
+	retTip, err = n.ledgerState.Tip()
+	if err != nil {
+		return retPoint, retTip, err
+	}
 
-	if intersectPoint.SlotNumber == 0 {
+	if intersectPoint == nil {
 		return retPoint, retTip, ochainsync.IntersectNotFoundError
 	}
 
 	// Add our client to the chainsync state
-	_ = n.chainsyncState.AddClient(ctx.ConnectionId, intersectPoint)
+	_, err = n.chainsyncState.AddClient(
+		ctx.ConnectionId,
+		*intersectPoint,
+	)
+	if err != nil {
+		return retPoint, retTip, err
+	}
 
 	// Populate return point
-	retPoint = intersectPoint.ToTip().Point
+	retPoint = *intersectPoint
 
 	return retPoint, retTip, nil
 }
@@ -101,15 +99,24 @@ func (n *Node) chainsyncServerFindIntersect(
 func (n *Node) chainsyncServerRequestNext(
 	ctx ochainsync.CallbackContext,
 ) error {
+	n.ledgerState.RLock()
+	defer n.ledgerState.RUnlock()
 	// Create/retrieve chainsync state for connection
-	clientState := n.chainsyncState.AddClient(
+	tip, err := n.ledgerState.Tip()
+	if err != nil {
+		return err
+	}
+	clientState, err := n.chainsyncState.AddClient(
 		ctx.ConnectionId,
-		n.chainsyncState.Tip(),
+		tip.Point,
 	)
+	if err != nil {
+		return err
+	}
 	if clientState.NeedsInitialRollback {
 		err := ctx.Server.RollBackward(
-			clientState.Cursor.ToTip().Point,
-			n.chainsyncState.Tip().ToTip(),
+			clientState.Cursor,
+			tip,
 		)
 		if err != nil {
 			return err
@@ -117,60 +124,39 @@ func (n *Node) chainsyncServerRequestNext(
 		clientState.NeedsInitialRollback = false
 		return nil
 	}
-outerLoop:
-	for {
-		sentAwaitReply := false
-		select {
-		case block, ok := <-clientState.BlockChan:
-			if !ok {
-				break outerLoop
-			}
-			// Ignore blocks older than what we've already sent
-			if clientState.Cursor.SlotNumber >= block.Point.SlotNumber {
-				continue
-			}
-			return n.chainsyncServerSendNext(ctx, block)
-		default:
-			err := ctx.Server.AwaitReply()
-			if err != nil {
-				return err
-			}
-			// Wait for next block and send
-			go func() {
-				block, ok := <-clientState.BlockChan
-				if !ok {
-					return
-				}
-				_ = n.chainsyncServerSendNext(ctx, block)
-			}()
-			sentAwaitReply = true
-		}
-		if sentAwaitReply {
-			break
-		}
+	// Check for available block
+	next, err := clientState.ChainIter.Next(false)
+	if err != nil {
+		return err
 	}
+	if next != nil {
+		return ctx.Server.RollForward(
+			next.Block.Type,
+			next.Block.Cbor,
+			tip,
+		)
+	}
+	// Send AwaitReply
+	if err := ctx.Server.AwaitReply(); err != nil {
+		return err
+	}
+	// Wait for next block and send
+	go func() {
+		next, _ := clientState.ChainIter.Next(true)
+		if next == nil {
+			return
+		}
+		tip, err := n.ledgerState.Tip()
+		if err != nil {
+			return
+		}
+		_ = ctx.Server.RollForward(
+			next.Block.Type,
+			next.Block.Cbor,
+			tip,
+		)
+	}()
 	return nil
-}
-
-func (n *Node) chainsyncServerSendNext(
-	ctx ochainsync.CallbackContext,
-	block chainsync.ChainsyncBlock,
-) error {
-	var err error
-	if block.Rollback {
-		err = ctx.Server.RollBackward(
-			block.Point.ToTip().Point,
-			n.chainsyncState.Tip().ToTip(),
-		)
-	} else {
-		blockBytes := block.Cbor[:]
-		err = ctx.Server.RollForward(
-			block.Type,
-			blockBytes,
-			n.chainsyncState.Tip().ToTip(),
-		)
-	}
-	return err
 }
 
 func (n *Node) chainsyncClientRollBackward(
@@ -178,15 +164,12 @@ func (n *Node) chainsyncClientRollBackward(
 	point ocommon.Point,
 	tip ochainsync.Tip,
 ) error {
-	n.config.logger.Info(fmt.Sprintf(
-		"rollback: slot: %d, hash: %s",
+	if err := n.chainsyncState.Rollback(
 		point.Slot,
 		hex.EncodeToString(point.Hash),
-	))
-	n.chainsyncState.Rollback(
-		point.Slot,
-		hex.EncodeToString(point.Hash),
-	)
+	); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -216,23 +199,8 @@ func (n *Node) chainsyncClientRollForward(
 	default:
 		return fmt.Errorf("unexpected block data type: %T", v)
 	}
-	n.config.logger.Info(fmt.Sprintf(
-		"chain extended, new tip: %s at slot %d",
-		blk.Hash(),
-		blk.SlotNumber(),
-	))
-	n.chainsyncState.AddBlock(
-		chainsync.ChainsyncBlock{
-			Point: chainsync.ChainsyncPoint{
-				SlotNumber: blk.SlotNumber(),
-				BlockHash:  blk.Hash(),
-				// TODO: figure out something for Byron. this won't work, since the
-				// block number isn't stored in the block itself
-				BlockNumber: blk.BlockNumber(),
-			},
-			Cbor: blk.Cbor(),
-			Type: blockType,
-		},
-	)
+	if err := n.chainsyncState.AddBlock(blk, blockType); err != nil {
+		return err
+	}
 	return nil
 }
