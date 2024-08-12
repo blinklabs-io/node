@@ -16,28 +16,35 @@ package state
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
-	"math/big"
+	"sync"
 
 	"github.com/blinklabs-io/node/database"
+	"github.com/blinklabs-io/node/event"
 	"github.com/blinklabs-io/node/state/models"
 	"gorm.io/gorm"
 
+	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
+	"github.com/blinklabs-io/gouroboros/protocol/common"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 	badger "github.com/dgraph-io/badger/v4"
 )
 
 type LedgerState struct {
-	logger  *slog.Logger
-	dataDir string
-	db      database.Database
+	sync.RWMutex
+	logger   *slog.Logger
+	dataDir  string
+	db       database.Database
+	eventBus *event.EventBus
 }
 
-func NewLedgerState(dataDir string, logger *slog.Logger) (*LedgerState, error) {
+func NewLedgerState(dataDir string, eventBus *event.EventBus, logger *slog.Logger) (*LedgerState, error) {
 	ls := &LedgerState{
-		dataDir: dataDir,
-		logger:  logger,
+		dataDir:  dataDir,
+		logger:   logger,
+		eventBus: eventBus,
 	}
 	if logger == nil {
 		// Create logger to throw away logs
@@ -61,16 +68,71 @@ func NewLedgerState(dataDir string, logger *slog.Logger) (*LedgerState, error) {
 	if err := ls.db.Metadata().AutoMigrate(&models.Block{}); err != nil {
 		return nil, err
 	}
+	// Setup event handlers
+	ls.eventBus.SubscribeFunc(ChainsyncEventType, ls.handleEventChainSync)
 	return ls, nil
+}
+
+func (ls *LedgerState) handleEventChainSync(evt event.Event) {
+	ls.Lock()
+	defer ls.Unlock()
+	e := evt.Data.(ChainsyncEvent)
+	if e.Rollback {
+		// TODO: delete block(s) from database
+		// Generate event
+		ls.eventBus.Publish(
+			ChainRollbackEventType,
+			event.NewEvent(
+				ChainRollbackEventType,
+				ChainRollbackEvent{
+					Point: e.Point,
+				},
+			),
+		)
+		ls.logger.Info(fmt.Sprintf(
+			"chain rolled back, new tip: %x at slot %d",
+			e.Point.Hash,
+			e.Point.Slot,
+		))
+	} else {
+		// Add block to database
+		tmpBlock := models.Block{
+			Slot: e.Point.Slot,
+			Hash: e.Point.Hash,
+			// TODO: figure out something for Byron. this won't work, since the
+			// block number isn't stored in the block itself
+			Number: e.Block.BlockNumber(),
+			Type:   e.Type,
+			Cbor:   e.Block.Cbor(),
+		}
+		if err := ls.AddBlock(tmpBlock); err != nil {
+			ls.logger.Error(
+				fmt.Sprintf("failed to add block to ledger state: %s", err),
+			)
+			return
+		}
+		// Generate event
+		ls.eventBus.Publish(
+			ChainBlockEventType,
+			event.NewEvent(
+				ChainBlockEventType,
+				ChainBlockEvent{
+					Point: e.Point,
+					Block: tmpBlock,
+				},
+			),
+		)
+		ls.logger.Info(fmt.Sprintf(
+			"chain extended, new tip: %s at slot %d",
+			e.Block.Hash(),
+			e.Block.SlotNumber(),
+		))
+	}
 }
 
 func (ls *LedgerState) AddBlock(block models.Block) error {
 	// Add block to blob DB
-	slotBytes := make([]byte, 8)
-	new(big.Int).SetUint64(block.Slot).FillBytes(slotBytes)
-	key := []byte("b")
-	key = append(key, slotBytes...)
-	key = append(key, block.Hash...)
+	key := models.BlockBlobKey(block.Slot, block.Hash)
 	err := ls.db.Blob().Update(func(txn *badger.Txn) error {
 		err := txn.Set(key, block.Cbor)
 		return err
@@ -86,36 +148,52 @@ func (ls *LedgerState) AddBlock(block models.Block) error {
 }
 
 func (ls *LedgerState) GetBlock(point ocommon.Point) (*models.Block, error) {
-	var ret models.Block
-	// Block metadata
-	result := ls.db.Metadata().First(&ret, "slot = ? AND hash = ?", point.Slot, point.Hash)
-	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, result.Error
-		}
-		return nil, nil
-	}
-	// Block CBOR
-	slotBytes := make([]byte, 8)
-	new(big.Int).SetUint64(point.Slot).FillBytes(slotBytes)
-	key := []byte("b")
-	key = append(key, slotBytes...)
-	key = append(key, point.Hash...)
-	err := ls.db.Blob().View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if err != nil {
-			return err
-		}
-		ret.Cbor, err = item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	ret, err := models.BlockByPoint(ls.db, point)
 	if err != nil {
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			return nil, nil
-		}
+		return nil, err
 	}
 	return &ret, nil
+}
+
+func (ls *LedgerState) GetIntersectPoint(points []common.Point) (*common.Point, error) {
+	var ret common.Point
+	for _, point := range points {
+		// Ignore points with a slot earlier than an existing match
+		if point.Slot < ret.Slot {
+			continue
+		}
+		// Lookup block in metadata DB
+		tmpBlock, err := models.BlockByPoint(ls.db, point)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return nil, err
+		}
+		// Update return value
+		ret.Slot = tmpBlock.Slot
+		ret.Hash = tmpBlock.Hash
+	}
+	if ret.Slot > 0 {
+		return &ret, nil
+	}
+	return nil, nil
+}
+
+func (ls *LedgerState) GetChainFromPoint(point common.Point) (*ChainIterator, error) {
+	return newChainIterator(ls, point)
+}
+
+func (ls *LedgerState) Tip() (ochainsync.Tip, error) {
+	var ret ochainsync.Tip
+	var tmpBlock models.Block
+	result := ls.db.Metadata().Order("number DESC").First(&tmpBlock)
+	if result.Error != nil {
+		return ret, result.Error
+	}
+	ret = ochainsync.Tip{
+		Point:       ocommon.NewPoint(tmpBlock.Slot, tmpBlock.Hash),
+		BlockNumber: tmpBlock.Number,
+	}
+	return ret, nil
 }

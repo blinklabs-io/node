@@ -68,6 +68,7 @@ func (n *Node) Run() error {
 	// Load state
 	state, err := state.NewLedgerState(
 		n.config.dataDir,
+		n.eventBus,
 		n.config.logger,
 	)
 	if err != nil {
