@@ -27,6 +27,7 @@ import (
 	badger "github.com/dgraph-io/badger/v4"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 	"gorm.io/plugin/opentelemetry/tracing"
 )
 
@@ -94,7 +95,12 @@ type InMemoryDatabase struct {
 // NewInMemory creates a new in-memory database
 func NewInMemory(logger *slog.Logger) (*InMemoryDatabase, error) {
 	// Open sqlite DB
-	metadataDb, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	metadataDb, err := gorm.Open(
+		sqlite.Open(":memory:"),
+		&gorm.Config{
+			Logger: gormlogger.Discard,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +150,12 @@ func NewPersistent(dataDir string, logger *slog.Logger) (*PersistentDatabase, er
 		dataDir,
 		"metadata.sqlite",
 	)
-	metadataDb, err := gorm.Open(sqlite.Open(metadataDbPath), &gorm.Config{})
+	metadataDb, err := gorm.Open(
+		sqlite.Open(metadataDbPath),
+		&gorm.Config{
+			Logger: gormlogger.Discard,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
