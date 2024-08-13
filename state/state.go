@@ -27,7 +27,6 @@ import (
 	"gorm.io/gorm"
 
 	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
-	"github.com/blinklabs-io/gouroboros/protocol/common"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 	badger "github.com/dgraph-io/badger/v4"
 )
@@ -155,8 +154,28 @@ func (ls *LedgerState) GetBlock(point ocommon.Point) (*models.Block, error) {
 	return &ret, nil
 }
 
-func (ls *LedgerState) GetIntersectPoint(points []common.Point) (*common.Point, error) {
-	var ret common.Point
+// RecentChainPoints returns the requested count of recent chain points in descending order. This is used mostly
+// for building a set of intersect points when acting as a chainsync client
+func (ls *LedgerState) RecentChainPoints(count int) ([]ocommon.Point, error) {
+	ls.RLock()
+	defer ls.RUnlock()
+	var tmpBlocks []models.Block
+	result := ls.db.Metadata().Order("number DESC").Limit(count).Find(&tmpBlocks)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	var ret []ocommon.Point
+	for _, tmpBlock := range tmpBlocks {
+		ret = append(
+			ret,
+			ocommon.NewPoint(tmpBlock.Slot, tmpBlock.Hash),
+		)
+	}
+	return ret, nil
+}
+
+func (ls *LedgerState) GetIntersectPoint(points []ocommon.Point) (*ocommon.Point, error) {
+	var ret ocommon.Point
 	for _, point := range points {
 		// Ignore points with a slot earlier than an existing match
 		if point.Slot < ret.Slot {
@@ -180,7 +199,7 @@ func (ls *LedgerState) GetIntersectPoint(points []common.Point) (*common.Point, 
 	return nil, nil
 }
 
-func (ls *LedgerState) GetChainFromPoint(point common.Point) (*ChainIterator, error) {
+func (ls *LedgerState) GetChainFromPoint(point ocommon.Point) (*ChainIterator, error) {
 	return newChainIterator(ls, point)
 }
 
