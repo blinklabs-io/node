@@ -77,7 +77,23 @@ func (ls *LedgerState) handleEventChainSync(evt event.Event) {
 	defer ls.Unlock()
 	e := evt.Data.(ChainsyncEvent)
 	if e.Rollback {
-		// TODO: delete block(s) from database
+		// Remove rolled-back blocks in reverse order
+		var tmpBlocks []models.Block
+		result := ls.db.Metadata().Where("slot > ?", e.Point.Slot).Order("slot DESC").Find(&tmpBlocks)
+		if result.Error != nil {
+			ls.logger.Error(
+				fmt.Sprintf("failed to query blocks from ledger: %s", result.Error),
+			)
+			return
+		}
+		for _, tmpBlock := range tmpBlocks {
+			if err := ls.removeBlock(tmpBlock); err != nil {
+				ls.logger.Error(
+					fmt.Sprintf("failed to remove block: %s", err),
+				)
+				return
+			}
+		}
 		// Generate event
 		ls.eventBus.Publish(
 			ChainRollbackEventType,
@@ -142,6 +158,23 @@ func (ls *LedgerState) AddBlock(block models.Block) error {
 	// Add to metadata DB
 	if result := ls.db.Metadata().Create(&block); result.Error != nil {
 		return result.Error
+	}
+	return nil
+}
+
+func (ls *LedgerState) removeBlock(block models.Block) error {
+	// Remove from metadata DB
+	if result := ls.db.Metadata().Delete(&block); result.Error != nil {
+		return result.Error
+	}
+	// Remove from blob DB
+	key := models.BlockBlobKey(block.Slot, block.Hash)
+	err := ls.db.Blob().Update(func(txn *badger.Txn) error {
+		err := txn.Delete(key)
+		return err
+	})
+	if err != nil {
+		return err
 	}
 	return nil
 }
