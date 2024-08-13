@@ -32,6 +32,8 @@ func Run(logger *slog.Logger) error {
 	n, err := node.New(
 		node.NewConfig(
 			node.WithLogger(logger),
+			// TODO: uncomment and make this configurable
+			//node.WithDataDir(".data"),
 			// TODO: make this configurable
 			node.WithNetwork("preview"),
 			node.WithListeners(

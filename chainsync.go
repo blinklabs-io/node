@@ -25,6 +25,10 @@ import (
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 )
 
+const (
+	chainsyncIntersectPointCount = 100
+)
+
 func (n *Node) chainsyncServerConnOpts() []ochainsync.ChainSyncOptionFunc {
 	return []ochainsync.ChainSyncOptionFunc{
 		ochainsync.WithFindIntersectFunc(n.chainsyncServerFindIntersect),
@@ -45,12 +49,22 @@ func (n *Node) chainsyncClientStart(connId ouroboros.ConnectionId) error {
 		return fmt.Errorf("failed to lookup connection ID: %s", connId.String())
 	}
 	oConn := conn.Conn
-	// TODO: use our recent blocks to build intersect points
-	tip, err := oConn.ChainSync().Client.GetCurrentTip()
+	intersectPoints, err := n.ledgerState.RecentChainPoints(chainsyncIntersectPointCount)
 	if err != nil {
 		return err
 	}
-	intersectPoints := []ocommon.Point{tip.Point}
+	// Empty intersect point means initial sync
+	if len(intersectPoints) == 0 {
+		// TODO: make this behavior configurable (genesis, tip, or specific point)
+		tip, err := oConn.ChainSync().Client.GetCurrentTip()
+		if err != nil {
+			return err
+		}
+		intersectPoints = append(
+			intersectPoints,
+			tip.Point,
+		)
+	}
 	if err := oConn.ChainSync().Client.Sync(intersectPoints); err != nil {
 		return err
 	}
