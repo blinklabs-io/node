@@ -31,6 +31,7 @@ func Run(logger *slog.Logger) error {
 	logger.Info("listening for ouroboros node-to-node connections on :3001")
 	n, err := node.New(
 		node.NewConfig(
+			node.WithIntersectTip(true),
 			node.WithLogger(logger),
 			// TODO: uncomment and make this configurable
 			//node.WithDataDir(".data"),

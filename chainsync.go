@@ -53,9 +53,12 @@ func (n *Node) chainsyncClientStart(connId ouroboros.ConnectionId) error {
 	if err != nil {
 		return err
 	}
-	// Empty intersect point means initial sync
-	if len(intersectPoints) == 0 {
-		// TODO: make this behavior configurable (genesis, tip, or specific point)
+	// Resume chainsync from where we left off
+	if len(intersectPoints) > 0 {
+		return oConn.ChainSync().Client.Sync(intersectPoints)
+	}
+	// Start initial chainsync from current chain tip
+	if n.config.intersectTip {
 		tip, err := oConn.ChainSync().Client.GetCurrentTip()
 		if err != nil {
 			return err
@@ -64,8 +67,29 @@ func (n *Node) chainsyncClientStart(connId ouroboros.ConnectionId) error {
 			intersectPoints,
 			tip.Point,
 		)
+		return oConn.ChainSync().Client.Sync(intersectPoints)
 	}
-	if err := oConn.ChainSync().Client.Sync(intersectPoints); err != nil {
+	// Start initial chainsync at specific point(s)
+	if len(n.config.intersectPoints) > 0 {
+		intersectPoints = append(
+			intersectPoints,
+			n.config.intersectPoints...,
+		)
+	}
+	// Determine available block range between intersect point(s) and current tip
+	bulkRangeStart, bulkRangeEnd, err := oConn.ChainSync().Client.GetAvailableBlockRange(
+		intersectPoints,
+	)
+	if err != nil {
+		return err
+	}
+	if bulkRangeStart.Slot == 0 || bulkRangeEnd.Slot == 0 {
+		// We're already at chain tip, so start a normal sync
+		return oConn.ChainSync().Client.Sync(intersectPoints)
+	}
+	// Use BlockFetch to request the entire available block range at once
+	n.chainsyncBulkRangeEnd = bulkRangeEnd
+	if err := oConn.BlockFetch().Client.GetBlockRange(bulkRangeStart, bulkRangeEnd); err != nil {
 		return err
 	}
 	return nil

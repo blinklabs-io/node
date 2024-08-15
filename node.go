@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"sync"
 
+	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 	"github.com/blinklabs-io/node/chainsync"
 	"github.com/blinklabs-io/node/event"
 	"github.com/blinklabs-io/node/mempool"
@@ -29,15 +30,16 @@ import (
 )
 
 type Node struct {
-	config             Config
-	connManager        *ouroboros.ConnectionManager
-	chainsyncState     *chainsync.State
-	eventBus           *event.EventBus
-	outboundConns      map[ouroboros.ConnectionId]outboundPeer
-	outboundConnsMutex sync.Mutex
-	mempool            *mempool.Mempool
-	ledgerState        *state.LedgerState
-	shutdownFuncs      []func(context.Context) error
+	config                Config
+	connManager           *ouroboros.ConnectionManager
+	chainsyncState        *chainsync.State
+	chainsyncBulkRangeEnd ocommon.Point
+	eventBus              *event.EventBus
+	outboundConns         map[ouroboros.ConnectionId]outboundPeer
+	outboundConnsMutex    sync.Mutex
+	mempool               *mempool.Mempool
+	ledgerState           *state.LedgerState
+	shutdownFuncs         []func(context.Context) error
 }
 
 func New(cfg Config) (*Node, error) {

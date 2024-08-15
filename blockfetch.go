@@ -15,6 +15,8 @@
 package node
 
 import (
+	"github.com/blinklabs-io/gouroboros/ledger"
+	"github.com/blinklabs-io/gouroboros/protocol/blockfetch"
 	oblockfetch "github.com/blinklabs-io/gouroboros/protocol/blockfetch"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 )
@@ -27,10 +29,7 @@ func (n *Node) blockfetchServerConnOpts() []oblockfetch.BlockFetchOptionFunc {
 
 func (n *Node) blockfetchClientConnOpts() []oblockfetch.BlockFetchOptionFunc {
 	return []oblockfetch.BlockFetchOptionFunc{
-		// TODO
-		/*
-			oblockfetch.WithBlockFunc(n.blockfetchClientBlock),
-		*/
+		oblockfetch.WithBlockFunc(n.blockfetchClientBlock),
 	}
 }
 
@@ -75,5 +74,18 @@ func (n *Node) blockfetchServerRequestRange(
 			return
 		}
 	}()
+	return nil
+}
+
+func (n *Node) blockfetchClientBlock(ctx blockfetch.CallbackContext, blockType uint, block ledger.Block) error {
+	if err := n.chainsyncState.AddBlock(block, blockType); err != nil {
+		return err
+	}
+	// Start normal chain-sync if we've reached the last block of our bulk range
+	if block.SlotNumber() == n.chainsyncBulkRangeEnd.Slot {
+		if err := n.chainsyncClientStart(ctx.ConnectionId); err != nil {
+			return err
+		}
+	}
 	return nil
 }
