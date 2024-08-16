@@ -20,10 +20,13 @@ import (
 	"log/slog"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
+	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 )
 
 type Config struct {
 	dataDir            string
+	intersectPoints    []ocommon.Point
+	intersectTip       bool
 	logger             *slog.Logger
 	listeners          []ListenerConfig
 	network            string
@@ -95,6 +98,20 @@ func NewConfig(opts ...ConfigOptionFunc) Config {
 func WithDataDir(dataDir string) ConfigOptionFunc {
 	return func(c *Config) {
 		c.dataDir = dataDir
+	}
+}
+
+// WithIntersectPoints specifies intersect point(s) for the initial chainsync. The default is to start at chain genesis
+func WithIntersectPoints(points []ocommon.Point) ConfigOptionFunc {
+	return func(c *Config) {
+		c.intersectPoints = points
+	}
+}
+
+// WithIntersectTip specifies whether to start the initial chainsync at the current tip. The default is to start at chain genesis
+func WithIntersectTip(intersectTip bool) ConfigOptionFunc {
+	return func(c *Config) {
+		c.intersectTip = intersectTip
 	}
 }
 

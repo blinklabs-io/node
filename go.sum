@@ -4,8 +4,8 @@ filippo.io/edwards25519 v1.1.0/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
-github.com/blinklabs-io/gouroboros v0.91.1 h1:LUfBRMr7Zq8t4She6mQkpEngX1VCOvN6EsxuvW5hKAk=
-github.com/blinklabs-io/gouroboros v0.91.1/go.mod h1:HM4aERbLAF2ACev2ZoY17eVeL+nWXb7urqFlkvQ3uyk=
+github.com/blinklabs-io/gouroboros v0.92.0 h1:IPD4cIGHjDfrYXkN/NAHe3tHAVsjO7bkl0CXCpNETZI=
+github.com/blinklabs-io/gouroboros v0.92.0/go.mod h1:HM4aERbLAF2ACev2ZoY17eVeL+nWXb7urqFlkvQ3uyk=
 github.com/blinklabs-io/ouroboros-mock v0.3.2 h1:tsym/TxeZB1N7GaxAvLU7hrMicszBR98vbj3XuRgD6U=
 github.com/blinklabs-io/ouroboros-mock v0.3.2/go.mod h1:4Lmv174yNH63x83YKKpcQJY10f3WkZFGDy1GvMh3ChY=
 github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=
