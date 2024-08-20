@@ -83,7 +83,7 @@ func (n *Node) chainsyncClientStart(connId ouroboros.ConnectionId) error {
 	if err != nil {
 		return err
 	}
-	if bulkRangeStart.Slot == 0 || bulkRangeEnd.Slot == 0 {
+	if bulkRangeStart.Slot == 0 && bulkRangeEnd.Slot == 0 {
 		// We're already at chain tip, so start a normal sync
 		return oConn.ChainSync().Client.Sync(intersectPoints)
 	}
