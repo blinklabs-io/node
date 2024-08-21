@@ -43,7 +43,7 @@ func Run(logger *slog.Logger) error {
 				},
 			),
 			// TODO: make this configurable
-			node.WithTracing(true),
+			//node.WithTracing(true),
 			// TODO: replace with parsing topology file
 			node.WithTopologyConfig(
 				&ouroboros.TopologyConfig{
