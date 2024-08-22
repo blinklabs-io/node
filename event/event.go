@@ -71,6 +71,7 @@ func (e *EventBus) Subscribe(eventType EventType) (EventSubscriberId, <-chan Eve
 	}
 	evtTypeSubs := e.subscribers[eventType]
 	evtTypeSubs[subId] = evtCh
+	metricSubscribers.WithLabelValues(string(eventType)).Inc()
 	return subId, evtCh
 }
 
@@ -96,6 +97,7 @@ func (e *EventBus) Unsubscribe(eventType EventType, subId EventSubscriberId) {
 	if evtTypeSubs, ok := e.subscribers[eventType]; ok {
 		delete(evtTypeSubs, subId)
 	}
+	metricSubscribers.WithLabelValues(string(eventType)).Dec()
 }
 
 // Publish allows a producer to send an event of a particular type to all subscribers
@@ -110,4 +112,5 @@ func (e *EventBus) Publish(eventType EventType, evt Event) {
 			subCh <- evt
 		}
 	}
+	metricEventsTotal.WithLabelValues(string(eventType)).Inc()
 }
