@@ -63,6 +63,8 @@ func (b *BaseDatabase) init() error {
 	if err := b.metadata.Use(tracing.NewPlugin(tracing.WithoutMetrics())); err != nil {
 		return err
 	}
+	// Configure metrics for Badger DB
+	b.registerBadgerMetrics()
 	// Run GC periodically for Badger DB
 	b.blobGcTimer = time.NewTicker(5 * time.Minute)
 	go b.blobGc()
