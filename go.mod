@@ -3,7 +3,7 @@ module github.com/blinklabs-io/node
 go 1.21.5
 
 require (
-	github.com/blinklabs-io/gouroboros v0.92.0
+	github.com/blinklabs-io/gouroboros v0.92.1
 	github.com/dgraph-io/badger/v4 v4.2.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/prometheus/client_golang v1.20.0
@@ -49,16 +49,16 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/utxorpc/go-codegen v0.8.0 // indirect
+	github.com/utxorpc/go-codegen v0.9.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.28.0 // indirect
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
-	golang.org/x/crypto v0.25.0 // indirect
+	golang.org/x/crypto v0.26.0 // indirect
 	golang.org/x/net v0.26.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/text v0.17.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240701130421-f6361c86f094 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240701130421-f6361c86f094 // indirect
 	google.golang.org/grpc v1.64.1 // indirect
