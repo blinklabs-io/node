@@ -276,6 +276,10 @@ func (ls *LedgerState) consumeUtxo(utxoId ledger.TransactionInput, slot uint64) 
 	// Find UTxO
 	utxo, err := models.UtxoByRef(ls.db, utxoId.Id().Bytes(), utxoId.Index())
 	if err != nil {
+		// TODO: make this configurable?
+		if err == gorm.ErrRecordNotFound {
+			return nil
+		}
 		return err
 	}
 	// Mark as deleted in specified slot
@@ -348,6 +352,7 @@ func (ls *LedgerState) RecentChainPoints(count int) ([]ocommon.Point, error) {
 	return ret, nil
 }
 
+// GetIntersectPoint returns the intersect between the specified points and the current chain
 func (ls *LedgerState) GetIntersectPoint(points []ocommon.Point) (*ocommon.Point, error) {
 	var ret ocommon.Point
 	for _, point := range points {
@@ -373,10 +378,12 @@ func (ls *LedgerState) GetIntersectPoint(points []ocommon.Point) (*ocommon.Point
 	return nil, nil
 }
 
+// GetChainFromPoint returns a ChainIterator starting at the specified point
 func (ls *LedgerState) GetChainFromPoint(point ocommon.Point) (*ChainIterator, error) {
 	return newChainIterator(ls, point)
 }
 
+// Tip returns the current chain tip
 func (ls *LedgerState) Tip() (ochainsync.Tip, error) {
 	var ret ochainsync.Tip
 	var tmpBlock models.Block
@@ -389,4 +396,18 @@ func (ls *LedgerState) Tip() (ochainsync.Tip, error) {
 		BlockNumber: tmpBlock.Number,
 	}
 	return ret, nil
+}
+
+// UtxoByRef returns a single UTxO by reference
+func (ls *LedgerState) UtxoByRef(txId []byte, outputIdx uint32) (models.Utxo, error) {
+	ls.RLock()
+	defer ls.RUnlock()
+	return models.UtxoByRef(ls.db, txId, outputIdx)
+}
+
+// UtxosByAddress returns all UTxOs that belong to the specified address
+func (ls *LedgerState) UtxosByAddress(addr ledger.Address) ([]models.Utxo, error) {
+	ls.RLock()
+	defer ls.RUnlock()
+	return models.UtxosByAddress(ls.db, addr)
 }

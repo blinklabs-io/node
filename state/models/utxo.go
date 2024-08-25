@@ -21,6 +21,7 @@ import (
 	"github.com/blinklabs-io/gouroboros/ledger"
 	"github.com/blinklabs-io/node/database"
 	"github.com/dgraph-io/badger/v4"
+	"gorm.io/gorm"
 )
 
 type Utxo struct {
@@ -67,6 +68,34 @@ func UtxoByRef(db database.Database, txId []byte, outputIdx uint32) (Utxo, error
 		return tmpUtxo, err
 	}
 	return tmpUtxo, result.Error
+}
+
+func UtxosByAddress(db database.Database, addr ledger.Address) ([]Utxo, error) {
+	var ret []Utxo
+	// Build sub-query for address
+	var addrQuery *gorm.DB
+	if addr.PaymentKeyHash() != ledger.NewBlake2b224(nil) {
+		addrQuery = db.Metadata().Where("payment_key = ?", addr.PaymentKeyHash().Bytes())
+	}
+	if addr.StakeKeyHash() != ledger.NewBlake2b224(nil) {
+		if addrQuery != nil {
+			addrQuery = addrQuery.Or("staking_key = ?", addr.StakeKeyHash().Bytes())
+		} else {
+			addrQuery = db.Metadata().Where("staking_key = ?", addr.StakeKeyHash().Bytes())
+		}
+	}
+	result := db.Metadata().Where("deleted_slot = 0").Where(addrQuery).Find(&ret)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	// Load CBOR from blob DB for each UTxO
+	for idx, tmpUtxo := range ret {
+		if err := tmpUtxo.loadCbor(db.Blob()); err != nil {
+			return nil, err
+		}
+		ret[idx] = tmpUtxo
+	}
+	return ret, nil
 }
 
 func UtxoDelete(db database.Database, utxo Utxo) error {
