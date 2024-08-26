@@ -34,23 +34,21 @@ type Block struct {
 	Cbor   []byte `gorm:"-"` // This is here for convenience but not represented in the metadata DB
 }
 
+func (Block) TableName() string {
+	return "block"
+}
+
 func (b Block) Decode() (ledger.Block, error) {
 	return ledger.NewBlockFromCbor(b.Type, b.Cbor)
 }
 
-func (b *Block) loadCbor(badgerDb *badger.DB) error {
+func (b *Block) loadCbor(txn *database.Txn) error {
 	key := BlockBlobKey(b.Slot, b.Hash)
-	err := badgerDb.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if err != nil {
-			return err
-		}
-		b.Cbor, err = item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	item, err := txn.Blob().Get(key)
+	if err != nil {
+		return err
+	}
+	b.Cbor, err = item.ValueCopy(nil)
 	if err != nil {
 		if errors.Is(err, badger.ErrKeyNotFound) {
 			return nil
@@ -61,21 +59,49 @@ func (b *Block) loadCbor(badgerDb *badger.DB) error {
 }
 
 func BlockByPoint(db database.Database, point ocommon.Point) (Block, error) {
+	var ret Block
+	txn := db.Transaction(false)
+	err := txn.Do(func(txn *database.Txn) error {
+		var err error
+		ret, err = BlockByPointTxn(txn, point)
+		return err
+	})
+	return ret, err
+}
+
+func BlockByPointTxn(txn *database.Txn, point ocommon.Point) (Block, error) {
 	var tmpBlock Block
-	result := db.Metadata().First(&tmpBlock, "slot = ? AND hash = ?", point.Slot, point.Hash)
-	if err := tmpBlock.loadCbor(db.Blob()); err != nil {
+	result := txn.Metadata().First(&tmpBlock, "slot = ? AND hash = ?", point.Slot, point.Hash)
+	if result.Error != nil {
+		return tmpBlock, result.Error
+	}
+	if err := tmpBlock.loadCbor(txn); err != nil {
 		return tmpBlock, err
 	}
-	return tmpBlock, result.Error
+	return tmpBlock, nil
 }
 
 func BlockByNumber(db database.Database, blockNumber uint64) (Block, error) {
+	var ret Block
+	txn := db.Transaction(false)
+	err := txn.Do(func(txn *database.Txn) error {
+		var err error
+		ret, err = BlockByNumberTxn(txn, blockNumber)
+		return err
+	})
+	return ret, err
+}
+
+func BlockByNumberTxn(txn *database.Txn, blockNumber uint64) (Block, error) {
 	var tmpBlock Block
-	result := db.Metadata().First(&tmpBlock, "number = ?", blockNumber)
-	if err := tmpBlock.loadCbor(db.Blob()); err != nil {
+	result := txn.Metadata().First(&tmpBlock, "number = ?", blockNumber)
+	if result.Error != nil {
+		return tmpBlock, result.Error
+	}
+	if err := tmpBlock.loadCbor(txn); err != nil {
 		return tmpBlock, err
 	}
-	return tmpBlock, result.Error
+	return tmpBlock, nil
 }
 
 func BlockBlobKey(slot uint64, hash []byte) []byte {

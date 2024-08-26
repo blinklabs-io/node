@@ -30,7 +30,6 @@ import (
 	"github.com/blinklabs-io/gouroboros/ledger"
 	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
-	badger "github.com/dgraph-io/badger/v4"
 )
 
 const (
@@ -94,8 +93,13 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 	ls.timerCleanupConsumedUtxos = time.AfterFunc(
 		cleanupConsumedUtxosInterval,
 		func() {
-			// Schedule the next run when we finish
-			defer ls.scheduleCleanupConsumedUtxos()
+			ls.Lock()
+			defer func() {
+				// Schedule the next run when we finish
+				ls.scheduleCleanupConsumedUtxos()
+				// Unlock ledger state
+				ls.Unlock()
+			}()
 			// Get the current tip, since we're querying by slot
 			tip, err := ls.Tip()
 			if err != nil {
@@ -104,23 +108,26 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 				)
 				return
 			}
-			// Get UTxOs that are marked as deleted and older than our slot window
-			var tmpUtxos []models.Utxo
-			result := ls.db.Metadata().Where("deleted_slot <= ?", tip.Point.Slot-cleanupConsumedUtxosSlotWindow).Order("id DESC").Find(&tmpUtxos)
-			if result.Error != nil {
-				ls.logger.Error(
-					fmt.Sprintf("failed to query consumed UTxOs: %s", result.Error),
-				)
-				return
-			}
-			// Delete the UTxOs
-			for _, utxo := range tmpUtxos {
-				if err := models.UtxoDelete(ls.db, utxo); err != nil {
-					ls.logger.Error(
-						fmt.Sprintf("failed to remove consumed UTxO: %s", err),
-					)
-					return
+			// Perform updates in a transaction
+			txn := ls.db.Transaction(true)
+			err = txn.Do(func(txn *database.Txn) error {
+				// Get UTxOs that are marked as deleted and older than our slot window
+				var tmpUtxos []models.Utxo
+				result := ls.db.Metadata().Where("deleted_slot <= ?", tip.Point.Slot-cleanupConsumedUtxosSlotWindow).Order("id DESC").Find(&tmpUtxos)
+				if result.Error != nil {
+					return fmt.Errorf("failed to query consumed UTxOs: %w", result.Error)
 				}
+				// Delete the UTxOs
+				for _, utxo := range tmpUtxos {
+					if err := models.UtxoDeleteTxn(txn, utxo); err != nil {
+						return fmt.Errorf("failed to remove consumed UTxO: %w", err)
+					}
+				}
+				return nil
+			})
+			if err != nil {
+				ls.logger.Error(err.Error())
+				return
 			}
 		},
 	)
@@ -150,32 +157,40 @@ func (ls *LedgerState) handleEventChainSync(evt event.Event) {
 }
 
 func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
-	// Remove rolled-back blocks in reverse order
-	var tmpBlocks []models.Block
-	result := ls.db.Metadata().Where("slot > ?", e.Point.Slot).Order("slot DESC").Find(&tmpBlocks)
-	if result.Error != nil {
-		return fmt.Errorf("query blocks: %w", result.Error)
-	}
-	for _, tmpBlock := range tmpBlocks {
-		if err := ls.removeBlock(tmpBlock); err != nil {
-			return fmt.Errorf("remove block: %w", err)
+	// Start a transaction
+	txn := ls.db.Transaction(true)
+	err := txn.Do(func(txn *database.Txn) error {
+		// Remove rolled-back blocks in reverse order
+		var tmpBlocks []models.Block
+		result := txn.Metadata().Where("slot > ?", e.Point.Slot).Order("slot DESC").Find(&tmpBlocks)
+		if result.Error != nil {
+			return fmt.Errorf("query blocks: %w", result.Error)
 		}
-	}
-	// Delete rolled-back UTxOs
-	var tmpUtxos []models.Utxo
-	result = ls.db.Metadata().Where("added_slot > ?", e.Point.Slot).Order("id DESC").Find(&tmpUtxos)
-	if result.Error != nil {
-		return fmt.Errorf("remove rolled-backup UTxOs: %w", result.Error)
-	}
-	for _, utxo := range tmpUtxos {
-		if err := models.UtxoDelete(ls.db, utxo); err != nil {
-			return fmt.Errorf("remove rolled-back UTxO: %w", err)
+		for _, tmpBlock := range tmpBlocks {
+			if err := ls.removeBlock(txn, tmpBlock); err != nil {
+				return fmt.Errorf("remove block: %w", err)
+			}
 		}
-	}
-	// Restore spent UTxOs
-	result = ls.db.Metadata().Model(models.Utxo{}).Where("deleted_slot > ?", e.Point.Slot).Update("deleted_slot", 0)
-	if result.Error != nil {
-		return fmt.Errorf("restore spent UTxOs after rollback: %w", result.Error)
+		// Delete rolled-back UTxOs
+		var tmpUtxos []models.Utxo
+		result = txn.Metadata().Where("added_slot > ?", e.Point.Slot).Order("id DESC").Find(&tmpUtxos)
+		if result.Error != nil {
+			return fmt.Errorf("remove rolled-backup UTxOs: %w", result.Error)
+		}
+		for _, utxo := range tmpUtxos {
+			if err := models.UtxoDeleteTxn(txn, utxo); err != nil {
+				return fmt.Errorf("remove rolled-back UTxO: %w", err)
+			}
+		}
+		// Restore spent UTxOs
+		result = txn.Metadata().Model(models.Utxo{}).Where("deleted_slot > ?", e.Point.Slot).Update("deleted_slot", 0)
+		if result.Error != nil {
+			return fmt.Errorf("restore spent UTxOs after rollback: %w", result.Error)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	// Generate event
 	ls.eventBus.Publish(
@@ -196,7 +211,6 @@ func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
 }
 
 func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
-	// Add block to database
 	tmpBlock := models.Block{
 		Slot: e.Point.Slot,
 		Hash: e.Point.Hash,
@@ -206,33 +220,42 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 		Type:   e.Type,
 		Cbor:   e.Block.Cbor(),
 	}
-	if err := ls.AddBlock(tmpBlock); err != nil {
-		return fmt.Errorf("add block: %w", err)
-	}
-	// Process transactions
-	for _, tx := range e.Block.Transactions() {
-		// Process consumed UTxOs
-		for _, consumed := range tx.Consumed() {
-			if err := ls.consumeUtxo(consumed, e.Point.Slot); err != nil {
-				return fmt.Errorf("remove consumed UTxO: %w", err)
-			}
+	// Start a transaction
+	txn := ls.db.Transaction(true)
+	err := txn.Do(func(txn *database.Txn) error {
+		// Add block to database
+		if err := ls.addBlock(txn, tmpBlock); err != nil {
+			return fmt.Errorf("add block: %w", err)
 		}
-		// Process produced UTxOs
-		for _, produced := range tx.Produced() {
-			outAddr := produced.Output.Address()
-			tmpUtxo := models.Utxo{
-				TxId:       produced.Id.Id().Bytes(),
-				OutputIdx:  produced.Id.Index(),
-				AddedSlot:  e.Point.Slot,
-				PaymentKey: outAddr.PaymentKeyHash().Bytes(),
-				StakingKey: outAddr.StakeKeyHash().Bytes(),
-				Cbor:       produced.Output.Cbor(),
+		// Process transactions
+		for _, tx := range e.Block.Transactions() {
+			// Process consumed UTxOs
+			for _, consumed := range tx.Consumed() {
+				if err := ls.consumeUtxo(txn, consumed, e.Point.Slot); err != nil {
+					return fmt.Errorf("remove consumed UTxO: %w", err)
+				}
 			}
-			if err := ls.addUtxo(tmpUtxo); err != nil {
-				return fmt.Errorf("add produced UTxO: %w", err)
+			// Process produced UTxOs
+			for _, produced := range tx.Produced() {
+				outAddr := produced.Output.Address()
+				tmpUtxo := models.Utxo{
+					TxId:       produced.Id.Id().Bytes(),
+					OutputIdx:  produced.Id.Index(),
+					AddedSlot:  e.Point.Slot,
+					PaymentKey: outAddr.PaymentKeyHash().Bytes(),
+					StakingKey: outAddr.StakeKeyHash().Bytes(),
+					Cbor:       produced.Output.Cbor(),
+				}
+				if err := ls.addUtxo(txn, tmpUtxo); err != nil {
+					return fmt.Errorf("add produced UTxO: %w", err)
+				}
 			}
+			// XXX: generate event for each TX/UTxO?
 		}
-		// XXX: generate event for each TX/UTxO?
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	// Generate event
 	ls.eventBus.Publish(
@@ -253,18 +276,15 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 	return nil
 }
 
-func (ls *LedgerState) addUtxo(utxo models.Utxo) error {
+func (ls *LedgerState) addUtxo(txn *database.Txn, utxo models.Utxo) error {
 	// Add UTxO to blob DB
 	key := models.UtxoBlobKey(utxo.TxId, utxo.OutputIdx)
-	err := ls.db.Blob().Update(func(txn *badger.Txn) error {
-		err := txn.Set(key, utxo.Cbor)
-		return err
-	})
+	err := txn.Blob().Set(key, utxo.Cbor)
 	if err != nil {
 		return err
 	}
 	// Add to metadata DB
-	if result := ls.db.Metadata().Create(&utxo); result.Error != nil {
+	if result := txn.Metadata().Create(&utxo); result.Error != nil {
 		return result.Error
 	}
 	return nil
@@ -272,9 +292,9 @@ func (ls *LedgerState) addUtxo(utxo models.Utxo) error {
 
 // consumeUtxo marks a UTxO as "deleted" without actually deleting it. This allows for a UTxO
 // to be easily on rollback
-func (ls *LedgerState) consumeUtxo(utxoId ledger.TransactionInput, slot uint64) error {
+func (ls *LedgerState) consumeUtxo(txn *database.Txn, utxoId ledger.TransactionInput, slot uint64) error {
 	// Find UTxO
-	utxo, err := models.UtxoByRef(ls.db, utxoId.Id().Bytes(), utxoId.Index())
+	utxo, err := models.UtxoByRefTxn(txn, utxoId.Id().Bytes(), utxoId.Index())
 	if err != nil {
 		// TODO: make this configurable?
 		if err == gorm.ErrRecordNotFound {
@@ -284,40 +304,34 @@ func (ls *LedgerState) consumeUtxo(utxoId ledger.TransactionInput, slot uint64) 
 	}
 	// Mark as deleted in specified slot
 	utxo.DeletedSlot = slot
-	if result := ls.db.Metadata().Save(&utxo); result.Error != nil {
+	if result := txn.Metadata().Save(&utxo); result.Error != nil {
 		return result.Error
 	}
 	return nil
 }
 
-func (ls *LedgerState) AddBlock(block models.Block) error {
+func (ls *LedgerState) addBlock(txn *database.Txn, block models.Block) error {
 	// Add block to blob DB
 	key := models.BlockBlobKey(block.Slot, block.Hash)
-	err := ls.db.Blob().Update(func(txn *badger.Txn) error {
-		err := txn.Set(key, block.Cbor)
-		return err
-	})
+	err := txn.Blob().Set(key, block.Cbor)
 	if err != nil {
 		return err
 	}
 	// Add to metadata DB
-	if result := ls.db.Metadata().Create(&block); result.Error != nil {
+	if result := txn.Metadata().Create(&block); result.Error != nil {
 		return result.Error
 	}
 	return nil
 }
 
-func (ls *LedgerState) removeBlock(block models.Block) error {
+func (ls *LedgerState) removeBlock(txn *database.Txn, block models.Block) error {
 	// Remove from metadata DB
-	if result := ls.db.Metadata().Delete(&block); result.Error != nil {
+	if result := txn.Metadata().Delete(&block); result.Error != nil {
 		return result.Error
 	}
 	// Remove from blob DB
 	key := models.BlockBlobKey(block.Slot, block.Hash)
-	err := ls.db.Blob().Update(func(txn *badger.Txn) error {
-		err := txn.Delete(key)
-		return err
-	})
+	err := txn.Blob().Delete(key)
 	if err != nil {
 		return err
 	}
