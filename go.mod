@@ -10,7 +10,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	go.opentelemetry.io/otel v1.29.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.28.0
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.28.0
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.29.0
 	go.opentelemetry.io/otel/sdk v1.29.0
 	golang.org/x/sys v0.24.0
 	gorm.io/gorm v1.25.11
