@@ -35,23 +35,21 @@ type Utxo struct {
 	Cbor        []byte `gorm:"-"` // This is here for convenience but not represented in the metadata DB
 }
 
+func (Utxo) TableName() string {
+	return "utxo"
+}
+
 func (u Utxo) Decode() (ledger.TransactionOutput, error) {
 	return ledger.NewTransactionOutputFromCbor(u.Cbor)
 }
 
-func (u *Utxo) loadCbor(badgerDb *badger.DB) error {
+func (u *Utxo) loadCbor(txn *database.Txn) error {
 	key := UtxoBlobKey(u.TxId, u.OutputIdx)
-	err := badgerDb.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if err != nil {
-			return err
-		}
-		u.Cbor, err = item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	item, err := txn.Blob().Get(key)
+	if err != nil {
+		return err
+	}
+	u.Cbor, err = item.ValueCopy(nil)
 	if err != nil {
 		if errors.Is(err, badger.ErrKeyNotFound) {
 			return nil
@@ -62,35 +60,60 @@ func (u *Utxo) loadCbor(badgerDb *badger.DB) error {
 }
 
 func UtxoByRef(db database.Database, txId []byte, outputIdx uint32) (Utxo, error) {
+	var ret Utxo
+	txn := db.Transaction(false)
+	err := txn.Do(func(txn *database.Txn) error {
+		var err error
+		ret, err = UtxoByRefTxn(txn, txId, outputIdx)
+		return err
+	})
+	return ret, err
+}
+
+func UtxoByRefTxn(txn *database.Txn, txId []byte, outputIdx uint32) (Utxo, error) {
 	var tmpUtxo Utxo
-	result := db.Metadata().First(&tmpUtxo, "tx_id = ? AND output_idx = ?", txId, outputIdx)
-	if err := tmpUtxo.loadCbor(db.Blob()); err != nil {
+	result := txn.Metadata().First(&tmpUtxo, "tx_id = ? AND output_idx = ?", txId, outputIdx)
+	if result.Error != nil {
+		return tmpUtxo, result.Error
+	}
+	if err := tmpUtxo.loadCbor(txn); err != nil {
 		return tmpUtxo, err
 	}
-	return tmpUtxo, result.Error
+	return tmpUtxo, nil
 }
 
 func UtxosByAddress(db database.Database, addr ledger.Address) ([]Utxo, error) {
+	txn := db.Transaction(false)
+	var ret []Utxo
+	err := txn.Do(func(txn *database.Txn) error {
+		var err error
+		ret, err = UtxosByAddressTxn(txn, addr)
+		return err
+	})
+	return ret, err
+}
+
+func UtxosByAddressTxn(txn *database.Txn, addr ledger.Address) ([]Utxo, error) {
 	var ret []Utxo
 	// Build sub-query for address
 	var addrQuery *gorm.DB
 	if addr.PaymentKeyHash() != ledger.NewBlake2b224(nil) {
-		addrQuery = db.Metadata().Where("payment_key = ?", addr.PaymentKeyHash().Bytes())
+		addrQuery = txn.Metadata().Where("payment_key = ?", addr.PaymentKeyHash().Bytes())
 	}
 	if addr.StakeKeyHash() != ledger.NewBlake2b224(nil) {
 		if addrQuery != nil {
 			addrQuery = addrQuery.Or("staking_key = ?", addr.StakeKeyHash().Bytes())
 		} else {
-			addrQuery = db.Metadata().Where("staking_key = ?", addr.StakeKeyHash().Bytes())
+			addrQuery = txn.Metadata().Where("staking_key = ?", addr.StakeKeyHash().Bytes())
 		}
 	}
-	result := db.Metadata().Where("deleted_slot = 0").Where(addrQuery).Find(&ret)
+	result := txn.Metadata().Where("deleted_slot = 0").Where(addrQuery).Find(&ret)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	// Load CBOR from blob DB for each UTxO
 	for idx, tmpUtxo := range ret {
-		if err := tmpUtxo.loadCbor(db.Blob()); err != nil {
+		if err := tmpUtxo.loadCbor(txn); err != nil {
 			return nil, err
 		}
 		ret[idx] = tmpUtxo
@@ -99,22 +122,28 @@ func UtxosByAddress(db database.Database, addr ledger.Address) ([]Utxo, error) {
 }
 
 func UtxoDelete(db database.Database, utxo Utxo) error {
+	txn := db.Transaction(false)
+	err := txn.Do(func(txn *database.Txn) error {
+		return UtxoDeleteTxn(txn, utxo)
+	})
+	return err
+}
+
+func UtxoDeleteTxn(txn *database.Txn, utxo Utxo) error {
 	// Remove from metadata DB
-	if result := db.Metadata().Delete(&utxo); result.Error != nil {
+	if result := txn.Metadata().Delete(&utxo); result.Error != nil {
 		return result.Error
 	}
 	// Remove from blob DB
 	key := UtxoBlobKey(utxo.TxId, utxo.OutputIdx)
-	err := db.Blob().Update(func(txn *badger.Txn) error {
-		err := txn.Delete(key)
-		return err
-	})
+	err := txn.Blob().Delete(key)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
+/*
 func UtxoDeleteByRef(db database.Database, txId []byte, outputIdx uint32) error {
 	utxo, err := UtxoByRef(db, txId, outputIdx)
 	if err != nil {
@@ -122,6 +151,7 @@ func UtxoDeleteByRef(db database.Database, txId []byte, outputIdx uint32) error 
 	}
 	return UtxoDelete(db, utxo)
 }
+*/
 
 func UtxoBlobKey(txId []byte, outputIdx uint32) []byte {
 	key := []byte("u")

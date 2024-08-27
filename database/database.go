@@ -34,6 +34,8 @@ import (
 type Database interface {
 	Metadata() *gorm.DB
 	Blob() *badger.DB
+	Transaction(bool) *Txn
+	updateCommitTimestamp(*Txn, int64) error
 }
 
 type BaseDatabase struct {
@@ -53,6 +55,11 @@ func (b *BaseDatabase) Blob() *badger.DB {
 	return b.blob
 }
 
+// Transaction starts a new database transaction and returns a handle to it
+func (b *BaseDatabase) Transaction(readWrite bool) *Txn {
+	return NewTxn(b, readWrite)
+}
+
 func (b *BaseDatabase) init() error {
 	if b.logger == nil {
 		// Create logger to throw away logs
@@ -65,6 +72,10 @@ func (b *BaseDatabase) init() error {
 	}
 	// Configure metrics for Badger DB
 	b.registerBadgerMetrics()
+	// Check commit timestamp
+	if err := b.checkCommitTimestamp(); err != nil {
+		return err
+	}
 	// Run GC periodically for Badger DB
 	b.blobGcTimer = time.NewTicker(5 * time.Minute)
 	go b.blobGc()
