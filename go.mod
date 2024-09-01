@@ -17,6 +17,9 @@ require (
 	gorm.io/plugin/opentelemetry v0.1.4
 )
 
+// XXX: uncomment when testing local changes to gouroboros
+// replace github.com/blinklabs-io/gouroboros => ../gouroboros
+
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
