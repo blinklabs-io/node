@@ -14,7 +14,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.29.0
 	golang.org/x/sys v0.25.0
 	gorm.io/gorm v1.25.11
-	gorm.io/plugin/opentelemetry v0.1.4
+	gorm.io/plugin/opentelemetry v0.1.6
 )
 
 // XXX: uncomment when testing local changes to gouroboros
