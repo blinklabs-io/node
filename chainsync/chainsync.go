@@ -70,7 +70,7 @@ func (s *State) AddClient(
 	s.Lock()
 	defer s.Unlock()
 	// Create initial chainsync state for connection
-	chainIter, err := s.ledgerState.GetChainFromPoint(intersectPoint)
+	chainIter, err := s.ledgerState.GetChainFromPoint(intersectPoint, false)
 	if err != nil {
 		return nil, err
 	}
