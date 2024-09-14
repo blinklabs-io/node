@@ -392,9 +392,10 @@ func (ls *LedgerState) GetIntersectPoint(points []ocommon.Point) (*ocommon.Point
 	return nil, nil
 }
 
-// GetChainFromPoint returns a ChainIterator starting at the specified point
-func (ls *LedgerState) GetChainFromPoint(point ocommon.Point) (*ChainIterator, error) {
-	return newChainIterator(ls, point)
+// GetChainFromPoint returns a ChainIterator starting at the specified point. If inclusive is true, the iterator
+// will start at the requested point, otherwise it will start at the next block.
+func (ls *LedgerState) GetChainFromPoint(point ocommon.Point, inclusive bool) (*ChainIterator, error) {
+	return newChainIterator(ls, point, inclusive)
 }
 
 // Tip returns the current chain tip

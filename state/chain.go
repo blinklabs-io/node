@@ -35,7 +35,7 @@ type ChainIteratorResult struct {
 	Rollback bool
 }
 
-func newChainIterator(ls *LedgerState, startPoint ocommon.Point) (*ChainIterator, error) {
+func newChainIterator(ls *LedgerState, startPoint ocommon.Point, inclusive bool) (*ChainIterator, error) {
 	ls.RLock()
 	defer ls.RUnlock()
 	// Lookup start block in metadata DB
@@ -50,6 +50,10 @@ func newChainIterator(ls *LedgerState, startPoint ocommon.Point) (*ChainIterator
 		ls:          ls,
 		startPoint:  startPoint,
 		blockNumber: tmpBlock.Number,
+	}
+	// Increment next block number is non-inclusive
+	if !inclusive {
+		ci.blockNumber++
 	}
 	return ci, nil
 }

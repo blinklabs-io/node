@@ -39,7 +39,7 @@ func (n *Node) blockfetchServerRequestRange(
 	end ocommon.Point,
 ) error {
 	// TODO: check if we have requested block range available and send NoBlocks if not
-	chainIter, err := n.ledgerState.GetChainFromPoint(start)
+	chainIter, err := n.ledgerState.GetChainFromPoint(start, true)
 	if err != nil {
 		return err
 	}
