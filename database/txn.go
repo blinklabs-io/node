@@ -73,7 +73,7 @@ func (t *Txn) Commit() error {
 	}
 	// No need to commit for read-only, but we do want to free up resources
 	if !t.readWrite {
-		return t.Rollback()
+		return t.rollback()
 	}
 	// Update the commit timestamp for both DBs
 	commitTimestamp := time.Now().UnixMilli()
@@ -97,6 +97,10 @@ func (t *Txn) Commit() error {
 func (t *Txn) Rollback() error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
+	return t.rollback()
+}
+
+func (t *Txn) rollback() error {
 	if t.finished {
 		return nil
 	}
