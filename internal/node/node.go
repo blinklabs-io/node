@@ -15,6 +15,7 @@
 package node
 
 import (
+	"fmt"
 	"log/slog"
 	"net"
 
@@ -66,7 +67,7 @@ func Run(logger *slog.Logger) error {
 	}
 	go func() {
 		if err := n.StartMetrics(); err != nil {
-			logger.Error("failed to start metrics listener %v", err)
+			logger.Error(fmt.Sprintf("failed to start metrics listener %v", err))
 		}
 	}()
 	if err := n.Run(); err != nil {
