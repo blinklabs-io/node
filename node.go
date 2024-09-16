@@ -31,7 +31,7 @@ import (
 
 type Node struct {
 	config                Config
-	connManager           *ouroboros.ConnectionManager
+	connManager           *ConnectionManager
 	chainsyncState        *chainsync.State
 	chainsyncBulkRangeEnd ocommon.Point
 	eventBus              *event.EventBus
@@ -79,8 +79,8 @@ func (n *Node) Run() error {
 	// Initialize chainsync state
 	n.chainsyncState = chainsync.NewState(n.eventBus, n.ledgerState)
 	// Configure connection manager
-	n.connManager = ouroboros.NewConnectionManager(
-		ouroboros.ConnectionManagerConfig{
+	n.connManager = NewConnectionManager(
+		ConnectionManagerConfig{
 			ConnClosedFunc: n.connectionManagerConnClosed,
 		},
 	)
