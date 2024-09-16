@@ -3,7 +3,7 @@ module github.com/blinklabs-io/node
 go 1.21.5
 
 require (
-	github.com/blinklabs-io/gouroboros v0.93.2
+	github.com/blinklabs-io/gouroboros v0.93.3
 	github.com/dgraph-io/badger/v4 v4.3.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/prometheus/client_golang v1.20.3
@@ -57,9 +57,9 @@ require (
 	go.opentelemetry.io/otel/metric v1.29.0 // indirect
 	go.opentelemetry.io/otel/trace v1.29.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
-	golang.org/x/crypto v0.26.0 // indirect
+	golang.org/x/crypto v0.27.0 // indirect
 	golang.org/x/net v0.28.0 // indirect
-	golang.org/x/text v0.17.0 // indirect
+	golang.org/x/text v0.18.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240822170219-fc7c04adadcd // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240822170219-fc7c04adadcd // indirect
 	google.golang.org/grpc v1.65.0 // indirect
