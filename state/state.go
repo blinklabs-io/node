@@ -95,10 +95,10 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 		func() {
 			ls.Lock()
 			defer func() {
-				// Schedule the next run when we finish
-				ls.scheduleCleanupConsumedUtxos()
 				// Unlock ledger state
 				ls.Unlock()
+				// Schedule the next run
+				ls.scheduleCleanupConsumedUtxos()
 			}()
 			// Get the current tip, since we're querying by slot
 			tip, err := ls.Tip()
@@ -113,7 +113,7 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 			err = txn.Do(func(txn *database.Txn) error {
 				// Get UTxOs that are marked as deleted and older than our slot window
 				var tmpUtxos []models.Utxo
-				result := ls.db.Metadata().Where("deleted_slot <= ?", tip.Point.Slot-cleanupConsumedUtxosSlotWindow).Order("id DESC").Find(&tmpUtxos)
+				result := txn.Metadata().Where("deleted_slot <= ?", tip.Point.Slot-cleanupConsumedUtxosSlotWindow).Order("id DESC").Find(&tmpUtxos)
 				if result.Error != nil {
 					return fmt.Errorf("failed to query consumed UTxOs: %w", result.Error)
 				}
