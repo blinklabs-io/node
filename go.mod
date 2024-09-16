@@ -1,6 +1,6 @@
 module github.com/blinklabs-io/node
 
-go 1.21.5
+go 1.22
 
 require (
 	github.com/blinklabs-io/gouroboros v0.93.2
