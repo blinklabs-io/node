@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/blinklabs-io/gouroboros v0.93.3
+	github.com/blinklabs-io/ouroboros-mock v0.3.3
 	github.com/dgraph-io/badger/v4 v4.3.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/prometheus/client_golang v1.20.3
@@ -12,6 +13,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.30.0
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.30.0
 	go.opentelemetry.io/otel/sdk v1.30.0
+	go.uber.org/goleak v1.3.0
 	golang.org/x/sys v0.25.0
 	gorm.io/gorm v1.25.12
 	gorm.io/plugin/opentelemetry v0.1.6
