@@ -33,7 +33,7 @@ type Config struct {
 	networkMagic       uint32
 	peerSharing        bool
 	outboundSourcePort int
-	topologyConfig     *ouroboros.TopologyConfig
+	topologyConfig     *TopologyConfig
 	tracing            bool
 	tracingStdout      bool
 }
@@ -157,9 +157,9 @@ func WithOutboundSourcePort(port int) ConfigOptionFunc {
 	}
 }
 
-// WithTopologyConfig specifies an ouroboros.TopologyConfig to use for outbound peers
+// WithTopologyConfig specifies a TopologyConfig to use for outbound peers
 func WithTopologyConfig(
-	topologyConfig *ouroboros.TopologyConfig,
+	topologyConfig *TopologyConfig,
 ) ConfigOptionFunc {
 	return func(c *Config) {
 		c.topologyConfig = topologyConfig

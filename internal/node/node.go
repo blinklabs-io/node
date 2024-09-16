@@ -19,7 +19,6 @@ import (
 	"log/slog"
 	"net"
 
-	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/node"
 )
 
@@ -47,10 +46,10 @@ func Run(logger *slog.Logger) error {
 			//node.WithTracing(true),
 			// TODO: replace with parsing topology file
 			node.WithTopologyConfig(
-				&ouroboros.TopologyConfig{
-					PublicRoots: []ouroboros.TopologyConfigP2PPublicRoot{
+				&node.TopologyConfig{
+					PublicRoots: []node.TopologyConfigP2PPublicRoot{
 						{
-							AccessPoints: []ouroboros.TopologyConfigP2PAccessPoint{
+							AccessPoints: []node.TopologyConfigP2PAccessPoint{
 								{
 									Address: "preview-node.play.dev.cardano.org",
 									Port:    3001,
