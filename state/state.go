@@ -339,6 +339,8 @@ func (ls *LedgerState) removeBlock(txn *database.Txn, block models.Block) error 
 }
 
 func (ls *LedgerState) GetBlock(point ocommon.Point) (*models.Block, error) {
+	ls.RLock()
+	defer ls.RUnlock()
 	ret, err := models.BlockByPoint(ls.db, point)
 	if err != nil {
 		return nil, err
@@ -368,6 +370,8 @@ func (ls *LedgerState) RecentChainPoints(count int) ([]ocommon.Point, error) {
 
 // GetIntersectPoint returns the intersect between the specified points and the current chain
 func (ls *LedgerState) GetIntersectPoint(points []ocommon.Point) (*ocommon.Point, error) {
+	ls.RLock()
+	defer ls.RUnlock()
 	var ret ocommon.Point
 	for _, point := range points {
 		// Ignore points with a slot earlier than an existing match
