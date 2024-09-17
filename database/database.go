@@ -109,7 +109,7 @@ type InMemoryDatabase struct {
 func NewInMemory(logger *slog.Logger) (*InMemoryDatabase, error) {
 	// Open sqlite DB
 	metadataDb, err := gorm.Open(
-		sqlite.Open(":memory:"),
+		sqlite.Open("file::memory:?cache=shared"),
 		&gorm.Config{
 			Logger: gormlogger.Discard,
 		},
