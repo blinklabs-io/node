@@ -39,10 +39,11 @@ type Database interface {
 }
 
 type BaseDatabase struct {
-	logger      *slog.Logger
-	metadata    *gorm.DB
-	blob        *badger.DB
-	blobGcTimer *time.Ticker
+	logger        *slog.Logger
+	metadata      *gorm.DB
+	blob          *badger.DB
+	blobGcEnabled bool
+	blobGcTimer   *time.Ticker
 }
 
 // Metadata returns the underlying metadata DB instance
@@ -77,8 +78,10 @@ func (b *BaseDatabase) init() error {
 		return err
 	}
 	// Run GC periodically for Badger DB
-	b.blobGcTimer = time.NewTicker(5 * time.Minute)
-	go b.blobGc()
+	if b.blobGcEnabled {
+		b.blobGcTimer = time.NewTicker(5 * time.Minute)
+		go b.blobGc()
+	}
 	return nil
 }
 
@@ -132,6 +135,8 @@ func NewInMemory(logger *slog.Logger) (*InMemoryDatabase, error) {
 			logger:   logger,
 			metadata: metadataDb,
 			blob:     blobDb,
+			// We disable badger GC when using an in-memory DB, since it will only throw errors
+			blobGcEnabled: false,
 		},
 	}
 	if err := db.init(); err != nil {
@@ -187,9 +192,10 @@ func NewPersistent(dataDir string, logger *slog.Logger) (*PersistentDatabase, er
 	}
 	db := &PersistentDatabase{
 		BaseDatabase: &BaseDatabase{
-			logger:   logger,
-			metadata: metadataDb,
-			blob:     blobDb,
+			logger:        logger,
+			metadata:      metadataDb,
+			blob:          blobDb,
+			blobGcEnabled: true,
 		},
 		dataDir: dataDir,
 	}
