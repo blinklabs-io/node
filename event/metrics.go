@@ -19,19 +19,24 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-var (
-	metricEventsTotal = promauto.NewCounterVec(
+type eventMetrics struct {
+	eventsTotal *prometheus.CounterVec
+	subscribers *prometheus.GaugeVec
+}
+
+func (e *EventBus) initMetrics() {
+	e.metrics.eventsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "event_total",
 			Help: "total events by type",
 		},
 		[]string{"type"},
 	)
-	metricSubscribers = promauto.NewGaugeVec(
+	e.metrics.subscribers = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "event_subscribers",
 			Help: "subscribers by event type",
 		},
 		[]string{"type"},
 	)
-)
+}

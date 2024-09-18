@@ -47,13 +47,16 @@ type EventBus struct {
 	sync.Mutex
 	subscribers map[EventType]map[EventSubscriberId]chan Event
 	lastSubId   EventSubscriberId
+	metrics     eventMetrics
 }
 
 // NewEventBus creates a new EventBus
 func NewEventBus() *EventBus {
-	return &EventBus{
+	e := &EventBus{
 		subscribers: make(map[EventType]map[EventSubscriberId]chan Event),
 	}
+	e.initMetrics()
+	return e
 }
 
 // Subscribe allows a consumer to receive events of a particular type via a channel
@@ -71,7 +74,7 @@ func (e *EventBus) Subscribe(eventType EventType) (EventSubscriberId, <-chan Eve
 	}
 	evtTypeSubs := e.subscribers[eventType]
 	evtTypeSubs[subId] = evtCh
-	metricSubscribers.WithLabelValues(string(eventType)).Inc()
+	e.metrics.subscribers.WithLabelValues(string(eventType)).Inc()
 	return subId, evtCh
 }
 
@@ -97,7 +100,7 @@ func (e *EventBus) Unsubscribe(eventType EventType, subId EventSubscriberId) {
 	if evtTypeSubs, ok := e.subscribers[eventType]; ok {
 		delete(evtTypeSubs, subId)
 	}
-	metricSubscribers.WithLabelValues(string(eventType)).Dec()
+	e.metrics.subscribers.WithLabelValues(string(eventType)).Dec()
 }
 
 // Publish allows a producer to send an event of a particular type to all subscribers
@@ -112,5 +115,5 @@ func (e *EventBus) Publish(eventType EventType, evt Event) {
 			subCh <- evt
 		}
 	}
-	metricEventsTotal.WithLabelValues(string(eventType)).Inc()
+	e.metrics.eventsTotal.WithLabelValues(string(eventType)).Inc()
 }
