@@ -30,17 +30,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-var (
-	blockNum_int = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "cardano_node_metrics_blockNum_int",
-		Help: "current block number",
-	})
-	slotNum_int = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "cardano_node_metrics_slotNum_int",
-		Help: "current slot number",
-	})
-)
-
 type ChainsyncClientState struct {
 	Cursor               ocommon.Point
 	ChainIter            *state.ChainIterator
@@ -53,14 +42,29 @@ type State struct {
 	ledgerState  *state.LedgerState
 	clients      map[ouroboros.ConnectionId]*ChainsyncClientState
 	clientConnId *ouroboros.ConnectionId // TODO: replace with handling of multiple chainsync clients
+	metrics      struct {
+		blockNum prometheus.Gauge
+		slotNum  prometheus.Gauge
+	}
 }
 
-func NewState(eventBus *event.EventBus, ledgerState *state.LedgerState) *State {
-	return &State{
+func NewState(eventBus *event.EventBus, ledgerState *state.LedgerState, promRegistry prometheus.Registerer) *State {
+	s := &State{
 		eventBus:    eventBus,
 		ledgerState: ledgerState,
 		clients:     make(map[ouroboros.ConnectionId]*ChainsyncClientState),
 	}
+	// Init metrics
+	promautoFactory := promauto.With(promRegistry)
+	s.metrics.blockNum = promautoFactory.NewGauge(prometheus.GaugeOpts{
+		Name: "cardano_node_metrics_blockNum_int",
+		Help: "current block number",
+	})
+	s.metrics.slotNum = promautoFactory.NewGauge(prometheus.GaugeOpts{
+		Name: "cardano_node_metrics_slotNum_int",
+		Help: "current slot number",
+	})
+	return s
 }
 
 func (s *State) AddClient(
@@ -116,8 +120,8 @@ func (s *State) AddBlock(block ledger.Block, blockType uint) error {
 	// block number isn't stored in the block itself
 	blockNumber := block.BlockNumber()
 	// Uodate metrics
-	blockNum_int.Set(float64(blockNumber))
-	slotNum_int.Set(float64(slotNumber))
+	s.metrics.blockNum.Set(float64(blockNumber))
+	s.metrics.slotNum.Set(float64(slotNumber))
 	// Generate event
 	blkHash, err := hex.DecodeString(block.Hash())
 	if err != nil {

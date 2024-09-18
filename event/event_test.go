@@ -24,7 +24,7 @@ import (
 func TestEventBusSingleSubscriber(t *testing.T) {
 	var testEvtData int = 999
 	var testEvtType event.EventType = "test.event"
-	eb := event.NewEventBus()
+	eb := event.NewEventBus(nil)
 	_, subCh := eb.Subscribe(testEvtType)
 	eb.Publish(testEvtType, event.NewEvent(testEvtType, testEvtData))
 	select {
@@ -48,7 +48,7 @@ func TestEventBusSingleSubscriber(t *testing.T) {
 func TestEventBusMultipleSubscribers(t *testing.T) {
 	var testEvtData int = 999
 	var testEvtType event.EventType = "test.event"
-	eb := event.NewEventBus()
+	eb := event.NewEventBus(nil)
 	_, sub1Ch := eb.Subscribe(testEvtType)
 	_, sub2Ch := eb.Subscribe(testEvtType)
 	eb.Publish(testEvtType, event.NewEvent(testEvtType, testEvtData))
@@ -99,7 +99,7 @@ func TestEventBusMultipleSubscribers(t *testing.T) {
 func TestEventBusUnsubscribe(t *testing.T) {
 	var testEvtData int = 999
 	var testEvtType event.EventType = "test.event"
-	eb := event.NewEventBus()
+	eb := event.NewEventBus(nil)
 	subId, subCh := eb.Subscribe(testEvtType)
 	eb.Unsubscribe(testEvtType, subId)
 	eb.Publish(testEvtType, event.NewEvent(testEvtType, testEvtData))

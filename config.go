@@ -21,6 +21,7 @@ import (
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Config struct {
@@ -31,8 +32,9 @@ type Config struct {
 	listeners          []ListenerConfig
 	network            string
 	networkMagic       uint32
-	peerSharing        bool
 	outboundSourcePort int
+	peerSharing        bool
+	promRegistry       prometheus.Registerer
 	topologyConfig     *TopologyConfig
 	tracing            bool
 	tracingStdout      bool
@@ -143,6 +145,13 @@ func WithNetworkMagic(networkMagic uint32) ConfigOptionFunc {
 	}
 }
 
+// WithOutboundSourcePort specifies the source port to use for outbound connections. This defaults to dynamic source ports
+func WithOutboundSourcePort(port int) ConfigOptionFunc {
+	return func(c *Config) {
+		c.outboundSourcePort = port
+	}
+}
+
 // WithPeerSharing specifies whether to enable peer sharing. This is disabled by default
 func WithPeerSharing(peerSharing bool) ConfigOptionFunc {
 	return func(c *Config) {
@@ -150,10 +159,11 @@ func WithPeerSharing(peerSharing bool) ConfigOptionFunc {
 	}
 }
 
-// WithOutboundSourcePort specifies the source port to use for outbound connections. This defaults to dynamic source ports
-func WithOutboundSourcePort(port int) ConfigOptionFunc {
+// WithPrometheusRegistry specifies a prometheus.Registerer instance to add metrics to. In most cases, prometheus.DefaultRegistry would be
+// a good choice to get metrics working
+func WithPrometheusRegistry(registry prometheus.Registerer) ConfigOptionFunc {
 	return func(c *Config) {
-		c.outboundSourcePort = port
+		c.promRegistry = registry
 	}
 }
 

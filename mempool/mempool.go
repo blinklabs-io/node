@@ -49,21 +49,6 @@ type RemoveTransactionEvent struct {
 	Hash string
 }
 
-var (
-	txsProcessedNum_int = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "cardano_node_metrics_txsProcessedNum_int",
-		Help: "total transactions processed",
-	})
-	txsInMempool_int = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "cardano_node_metrics_txsInMempool_int",
-		Help: "current count of mempool transactions",
-	})
-	mempoolBytes_int = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "cardano_node_metrics_mempoolBytes_int",
-		Help: "current size of mempool transactions in bytes",
-	})
-)
-
 type MempoolTransaction struct {
 	Hash     string
 	Type     uint
@@ -80,9 +65,14 @@ type Mempool struct {
 	consumerIndex      map[ouroboros.ConnectionId]int
 	consumerIndexMutex sync.Mutex
 	transactions       []*MempoolTransaction
+	metrics            struct {
+		txsProcessedNum prometheus.Counter
+		txsInMempool    prometheus.Gauge
+		mempoolBytes    prometheus.Gauge
+	}
 }
 
-func NewMempool(logger *slog.Logger, eventBus *event.EventBus) *Mempool {
+func NewMempool(logger *slog.Logger, eventBus *event.EventBus, promRegistry prometheus.Registerer) *Mempool {
 	m := &Mempool{
 		eventBus:  eventBus,
 		consumers: make(map[ouroboros.ConnectionId]*MempoolConsumer),
@@ -95,6 +85,20 @@ func NewMempool(logger *slog.Logger, eventBus *event.EventBus) *Mempool {
 	// TODO: replace this with purging based on on-chain TXs
 	// Schedule initial mempool expired cleanup
 	m.scheduleRemoveExpired()
+	// Init metrics
+	promautoFactory := promauto.With(promRegistry)
+	m.metrics.txsProcessedNum = promautoFactory.NewCounter(prometheus.CounterOpts{
+		Name: "cardano_node_metrics_txsProcessedNum_int",
+		Help: "total transactions processed",
+	})
+	m.metrics.txsInMempool = promautoFactory.NewGauge(prometheus.GaugeOpts{
+		Name: "cardano_node_metrics_txsInMempool_int",
+		Help: "current count of mempool transactions",
+	})
+	m.metrics.mempoolBytes = promautoFactory.NewGauge(prometheus.GaugeOpts{
+		Name: "cardano_node_metrics_mempoolBytes_int",
+		Help: "current size of mempool transactions in bytes",
+	})
 	return m
 }
 
@@ -201,9 +205,9 @@ func (m *Mempool) AddTransaction(tx MempoolTransaction) error {
 	m.logger.Debug(
 		fmt.Sprintf("added transaction %s to mempool", tx.Hash),
 	)
-	txsProcessedNum_int.Inc()
-	txsInMempool_int.Inc()
-	mempoolBytes_int.Add(float64(len(tx.Cbor)))
+	m.metrics.txsProcessedNum.Inc()
+	m.metrics.txsInMempool.Inc()
+	m.metrics.mempoolBytes.Add(float64(len(tx.Cbor)))
 	// Send new TX to consumers that are ready for it
 	newTxIdx := len(m.transactions) - 1
 	for connId, consumerIdx := range m.consumerIndex {
@@ -268,8 +272,8 @@ func (m *Mempool) removeTransaction(hash string) bool {
 				txIdx,
 				txIdx+1,
 			)
-			txsInMempool_int.Dec()
-			mempoolBytes_int.Sub(float64(len(tx.Cbor)))
+			m.metrics.txsInMempool.Dec()
+			m.metrics.mempoolBytes.Sub(float64(len(tx.Cbor)))
 			// Update consumer indexes to reflect removed TX
 			for connId, consumerIdx := range m.consumerIndex {
 				// Decrement consumer index if the consumer has reached the removed TX
