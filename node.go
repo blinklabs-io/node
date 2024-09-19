@@ -22,6 +22,7 @@ import (
 
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 	"github.com/blinklabs-io/node/chainsync"
+	"github.com/blinklabs-io/node/conn_manager"
 	"github.com/blinklabs-io/node/event"
 	"github.com/blinklabs-io/node/mempool"
 	"github.com/blinklabs-io/node/state"
@@ -31,7 +32,7 @@ import (
 
 type Node struct {
 	config                Config
-	connManager           *ConnectionManager
+	connManager           *conn_manager.ConnectionManager
 	chainsyncState        *chainsync.State
 	chainsyncBulkRangeEnd ocommon.Point
 	eventBus              *event.EventBus
@@ -79,8 +80,8 @@ func (n *Node) Run() error {
 	// Initialize chainsync state
 	n.chainsyncState = chainsync.NewState(n.eventBus, n.ledgerState, n.config.promRegistry)
 	// Configure connection manager
-	n.connManager = NewConnectionManager(
-		ConnectionManagerConfig{
+	n.connManager = conn_manager.NewConnectionManager(
+		conn_manager.ConnectionManagerConfig{
 			ConnClosedFunc: n.connectionManagerConnClosed,
 		},
 	)

@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package node_test
+package topology_test
 
 import (
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/blinklabs-io/node"
+	"github.com/blinklabs-io/node/topology"
 )
 
 type topologyTestDefinition struct {
 	jsonData       string
-	expectedObject *node.TopologyConfig
+	expectedObject *topology.TopologyConfig
 }
 
 var topologyTests = []topologyTestDefinition{
@@ -40,8 +40,8 @@ var topologyTests = []topologyTestDefinition{
   ]
 }
 `,
-		expectedObject: &node.TopologyConfig{
-			Producers: []node.TopologyConfigLegacyProducer{
+		expectedObject: &topology.TopologyConfig{
+			Producers: []topology.TopologyConfigLegacyProducer{
 				{
 					Address: "backbone.cardano.iog.io",
 					Port:    3001,
@@ -83,17 +83,17 @@ var topologyTests = []topologyTestDefinition{
   "useLedgerAfterSlot": 99532743
 }
 `,
-		expectedObject: &node.TopologyConfig{
-			LocalRoots: []node.TopologyConfigP2PLocalRoot{
+		expectedObject: &topology.TopologyConfig{
+			LocalRoots: []topology.TopologyConfigP2PLocalRoot{
 				{
-					AccessPoints: []node.TopologyConfigP2PAccessPoint{},
+					AccessPoints: []topology.TopologyConfigP2PAccessPoint{},
 					Advertise:    false,
 					Valency:      1,
 				},
 			},
-			PublicRoots: []node.TopologyConfigP2PPublicRoot{
+			PublicRoots: []topology.TopologyConfigP2PPublicRoot{
 				{
-					AccessPoints: []node.TopologyConfigP2PAccessPoint{
+					AccessPoints: []topology.TopologyConfigP2PAccessPoint{
 						{
 							Address: "backbone.cardano.iog.io",
 							Port:    3001,
@@ -102,7 +102,7 @@ var topologyTests = []topologyTestDefinition{
 					Advertise: false,
 				},
 				{
-					AccessPoints: []node.TopologyConfigP2PAccessPoint{
+					AccessPoints: []topology.TopologyConfigP2PAccessPoint{
 						{
 							Address: "backbone.mainnet.emurgornd.com",
 							Port:    3001,
@@ -118,7 +118,7 @@ var topologyTests = []topologyTestDefinition{
 
 func TestParseTopologyConfig(t *testing.T) {
 	for _, test := range topologyTests {
-		topology, err := node.NewTopologyConfigFromReader(
+		topology, err := topology.NewTopologyConfigFromReader(
 			strings.NewReader(test.jsonData),
 		)
 		if err != nil {

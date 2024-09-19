@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package node
+package conn_manager
 
 import (
 	"sync"
+
+	"github.com/blinklabs-io/node/topology"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 )
@@ -101,11 +103,11 @@ func (c *ConnectionManager) AddHost(
 	)
 }
 
-func (c *ConnectionManager) AddHostsFromTopology(topology *TopologyConfig) {
-	for _, host := range topology.Producers {
+func (c *ConnectionManager) AddHostsFromTopology(topologyConfig *topology.TopologyConfig) {
+	for _, host := range topologyConfig.Producers {
 		c.AddHost(host.Address, host.Port, ConnectionManagerTagHostProducer)
 	}
-	for _, localRoot := range topology.LocalRoots {
+	for _, localRoot := range topologyConfig.LocalRoots {
 		for _, host := range localRoot.AccessPoints {
 			c.AddHost(
 				host.Address,
@@ -114,7 +116,7 @@ func (c *ConnectionManager) AddHostsFromTopology(topology *TopologyConfig) {
 			)
 		}
 	}
-	for _, publicRoot := range topology.PublicRoots {
+	for _, publicRoot := range topologyConfig.PublicRoots {
 		for _, host := range publicRoot.AccessPoints {
 			c.AddHost(
 				host.Address,
