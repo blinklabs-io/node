@@ -18,8 +18,13 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
+	"os"
 
 	"github.com/blinklabs-io/node"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func Run(logger *slog.Logger) error {
@@ -29,6 +34,16 @@ func Run(logger *slog.Logger) error {
 		return err
 	}
 	logger.Info("listening for ouroboros node-to-node connections on :3001")
+	// Metrics listener
+	http.Handle("/metrics", promhttp.Handler())
+	logger.Info("listening for prometheus metrics connections on :12798")
+	go func() {
+		// TODO: make this configurable
+		if err := http.ListenAndServe(":12798", nil); err != nil {
+			logger.Error(fmt.Sprintf("failed to start metrics listener: %s", err))
+			os.Exit(1)
+		}
+	}()
 	n, err := node.New(
 		node.NewConfig(
 			node.WithIntersectTip(true),
@@ -42,6 +57,8 @@ func Run(logger *slog.Logger) error {
 					Listener: l,
 				},
 			),
+			// Enable metrics with default prometheus registry
+			node.WithPrometheusRegistry(prometheus.DefaultRegisterer),
 			// TODO: make this configurable
 			//node.WithTracing(true),
 			// TODO: replace with parsing topology file
@@ -64,11 +81,6 @@ func Run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	go func() {
-		if err := n.StartMetrics(); err != nil {
-			logger.Error(fmt.Sprintf("failed to start metrics listener %v", err))
-		}
-	}()
 	if err := n.Run(); err != nil {
 		return err
 	}
