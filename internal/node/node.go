@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/blinklabs-io/node"
+	"github.com/blinklabs-io/node/topology"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -63,10 +64,10 @@ func Run(logger *slog.Logger) error {
 			//node.WithTracing(true),
 			// TODO: replace with parsing topology file
 			node.WithTopologyConfig(
-				&node.TopologyConfig{
-					PublicRoots: []node.TopologyConfigP2PPublicRoot{
+				&topology.TopologyConfig{
+					PublicRoots: []topology.TopologyConfigP2PPublicRoot{
 						{
-							AccessPoints: []node.TopologyConfigP2PAccessPoint{
+							AccessPoints: []topology.TopologyConfigP2PAccessPoint{
 								{
 									Address: "preview-node.play.dev.cardano.org",
 									Port:    3001,

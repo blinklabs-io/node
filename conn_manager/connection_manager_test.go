@@ -12,28 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package node_test
+package conn_manager_test
 
 import (
 	"io"
 	"testing"
 	"time"
 
+	"github.com/blinklabs-io/node/conn_manager"
+
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/protocol/keepalive"
-	"github.com/blinklabs-io/node"
 	ouroboros_mock "github.com/blinklabs-io/ouroboros-mock"
 	"go.uber.org/goleak"
 )
 
 func TestConnectionManagerTagString(t *testing.T) {
-	testDefs := map[node.ConnectionManagerTag]string{
-		node.ConnectionManagerTagHostP2PLedger: "HostP2PLedger",
-		node.ConnectionManagerTagHostP2PGossip: "HostP2PGossip",
-		node.ConnectionManagerTagRoleInitiator: "RoleInitiator",
-		node.ConnectionManagerTagRoleResponder: "RoleResponder",
-		node.ConnectionManagerTagNone:          "Unknown",
-		node.ConnectionManagerTag(9999):        "Unknown",
+	testDefs := map[conn_manager.ConnectionManagerTag]string{
+		conn_manager.ConnectionManagerTagHostP2PLedger: "HostP2PLedger",
+		conn_manager.ConnectionManagerTagHostP2PGossip: "HostP2PGossip",
+		conn_manager.ConnectionManagerTagRoleInitiator: "RoleInitiator",
+		conn_manager.ConnectionManagerTagRoleResponder: "RoleResponder",
+		conn_manager.ConnectionManagerTagNone:          "Unknown",
+		conn_manager.ConnectionManagerTag(9999):        "Unknown",
 	}
 	for k, v := range testDefs {
 		if k.String() != v {
@@ -52,8 +53,8 @@ func TestConnectionManagerConnError(t *testing.T) {
 	var expectedConnId ouroboros.ConnectionId
 	expectedErr := io.EOF
 	doneChan := make(chan any)
-	connManager := node.NewConnectionManager(
-		node.ConnectionManagerConfig{
+	connManager := conn_manager.NewConnectionManager(
+		conn_manager.ConnectionManagerConfig{
 			ConnClosedFunc: func(connId ouroboros.ConnectionId, err error) {
 				if err != nil {
 					if connId != expectedConnId {
@@ -126,8 +127,8 @@ func TestConnectionManagerConnClosed(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	var expectedConnId ouroboros.ConnectionId
 	doneChan := make(chan any)
-	connManager := node.NewConnectionManager(
-		node.ConnectionManagerConfig{
+	connManager := conn_manager.NewConnectionManager(
+		conn_manager.ConnectionManagerConfig{
 			ConnClosedFunc: func(connId ouroboros.ConnectionId, err error) {
 				if connId != expectedConnId {
 					t.Fatalf(

@@ -19,6 +19,8 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/blinklabs-io/node/topology"
+
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 	"github.com/prometheus/client_golang/prometheus"
@@ -35,7 +37,7 @@ type Config struct {
 	outboundSourcePort int
 	peerSharing        bool
 	promRegistry       prometheus.Registerer
-	topologyConfig     *TopologyConfig
+	topologyConfig     *topology.TopologyConfig
 	tracing            bool
 	tracingStdout      bool
 }
@@ -167,9 +169,9 @@ func WithPrometheusRegistry(registry prometheus.Registerer) ConfigOptionFunc {
 	}
 }
 
-// WithTopologyConfig specifies a TopologyConfig to use for outbound peers
+// WithTopologyConfig specifies a topology.TopologyConfig to use for outbound peers
 func WithTopologyConfig(
-	topologyConfig *TopologyConfig,
+	topologyConfig *topology.TopologyConfig,
 ) ConfigOptionFunc {
 	return func(c *Config) {
 		c.topologyConfig = topologyConfig
