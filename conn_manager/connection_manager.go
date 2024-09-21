@@ -34,6 +34,7 @@ const (
 	ConnectionManagerTagHostProducer
 	ConnectionManagerTagHostLocalRoot
 	ConnectionManagerTagHostPublicRoot
+	ConnectionManagerTagHostBootstrapPeer
 	ConnectionManagerTagHostP2PLedger
 	ConnectionManagerTagHostP2PGossip
 
@@ -44,13 +45,14 @@ const (
 
 func (c ConnectionManagerTag) String() string {
 	tmp := map[ConnectionManagerTag]string{
-		ConnectionManagerTagHostProducer:   "HostProducer",
-		ConnectionManagerTagHostLocalRoot:  "HostLocalRoot",
-		ConnectionManagerTagHostPublicRoot: "HostPublicRoot",
-		ConnectionManagerTagHostP2PLedger:  "HostP2PLedger",
-		ConnectionManagerTagHostP2PGossip:  "HostP2PGossip",
-		ConnectionManagerTagRoleInitiator:  "RoleInitiator",
-		ConnectionManagerTagRoleResponder:  "RoleResponder",
+		ConnectionManagerTagHostProducer:      "HostProducer",
+		ConnectionManagerTagHostLocalRoot:     "HostLocalRoot",
+		ConnectionManagerTagHostPublicRoot:    "HostPublicRoot",
+		ConnectionManagerTagHostBootstrapPeer: "HostBootstrapPeer",
+		ConnectionManagerTagHostP2PLedger:     "HostP2PLedger",
+		ConnectionManagerTagHostP2PGossip:     "HostP2PGossip",
+		ConnectionManagerTagRoleInitiator:     "RoleInitiator",
+		ConnectionManagerTagRoleResponder:     "RoleResponder",
 		// TODO: add more tags to match those added above
 	}
 	ret, ok := tmp[c]
@@ -124,6 +126,13 @@ func (c *ConnectionManager) AddHostsFromTopology(topologyConfig *topology.Topolo
 				ConnectionManagerTagHostPublicRoot,
 			)
 		}
+	}
+	for _, bootstrapPeer := range topologyConfig.BootstrapPeers {
+		c.AddHost(
+			bootstrapPeer.Address,
+			bootstrapPeer.Port,
+			ConnectionManagerTagHostBootstrapPeer,
+		)
 	}
 }
 
