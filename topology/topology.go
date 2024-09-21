@@ -22,10 +22,11 @@ import (
 
 // TopologyConfig represents a Cardano node topology config
 type TopologyConfig struct {
-	Producers          []TopologyConfigLegacyProducer `json:"Producers"`
-	LocalRoots         []TopologyConfigP2PLocalRoot   `json:"localRoots"`
-	PublicRoots        []TopologyConfigP2PPublicRoot  `json:"publicRoots"`
-	UseLedgerAfterSlot uint64                         `json:"useLedgerAfterSlot"`
+	Producers          []TopologyConfigLegacyProducer   `json:"Producers"`
+	LocalRoots         []TopologyConfigP2PLocalRoot     `json:"localRoots"`
+	PublicRoots        []TopologyConfigP2PPublicRoot    `json:"publicRoots"`
+	BootstrapPeers     []TopologyConfigP2PBootstrapPeer `json:"bootstrapPeers"`
+	UseLedgerAfterSlot uint64                           `json:"useLedgerAfterSlot"`
 }
 
 type TopologyConfigLegacyProducer struct {
@@ -44,6 +45,7 @@ type TopologyConfigP2PAccessPoint struct {
 type TopologyConfigP2PLocalRoot struct {
 	AccessPoints []TopologyConfigP2PAccessPoint `json:"accessPoints"`
 	Advertise    bool                           `json:"advertise"`
+	Trustable    bool                           `json:"trustable"`
 	Valency      uint                           `json:"valency"`
 }
 
@@ -52,6 +54,8 @@ type TopologyConfigP2PPublicRoot struct {
 	Advertise    bool                           `json:"advertise"`
 	Valency      uint                           `json:"valency"`
 }
+
+type TopologyConfigP2PBootstrapPeer = TopologyConfigP2PAccessPoint
 
 func NewTopologyConfigFromFile(path string) (*TopologyConfig, error) {
 	dataFile, err := os.Open(path)

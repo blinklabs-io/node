@@ -114,6 +114,72 @@ var topologyTests = []topologyTestDefinition{
 			UseLedgerAfterSlot: 99532743,
 		},
 	},
+	{
+		jsonData: `
+{
+  "bootstrapPeers": [
+    {
+      "address": "backbone.cardano.iog.io",
+      "port": 3001
+    },
+    {
+      "address": "backbone.mainnet.emurgornd.com",
+      "port": 3001
+    },
+    {
+      "address": "backbone.mainnet.cardanofoundation.org",
+      "port": 3001
+    }
+  ],
+  "localRoots": [
+    {
+      "accessPoints": [],
+      "advertise": false,
+      "trustable": false,
+      "valency": 1
+    }
+  ],
+  "publicRoots": [
+    {
+      "accessPoints": [],
+      "advertise": false
+    }
+  ],
+  "useLedgerAfterSlot": 128908821
+}
+`,
+		expectedObject: &topology.TopologyConfig{
+			LocalRoots: []topology.TopologyConfigP2PLocalRoot{
+				{
+					AccessPoints: []topology.TopologyConfigP2PAccessPoint{},
+					Advertise:    false,
+					Trustable:    false,
+					Valency:      1,
+				},
+			},
+			PublicRoots: []topology.TopologyConfigP2PPublicRoot{
+				{
+					AccessPoints: []topology.TopologyConfigP2PAccessPoint{},
+					Advertise:    false,
+				},
+			},
+			BootstrapPeers: []topology.TopologyConfigP2PBootstrapPeer{
+				{
+					Address: "backbone.cardano.iog.io",
+					Port:    3001,
+				},
+				{
+					Address: "backbone.mainnet.emurgornd.com",
+					Port:    3001,
+				},
+				{
+					Address: "backbone.mainnet.cardanofoundation.org",
+					Port:    3001,
+				},
+			},
+			UseLedgerAfterSlot: 128908821,
+		},
+	},
 }
 
 func TestParseTopologyConfig(t *testing.T) {
