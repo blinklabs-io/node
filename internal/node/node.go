@@ -22,19 +22,20 @@ import (
 	"os"
 
 	"github.com/blinklabs-io/node"
-	"github.com/blinklabs-io/node/topology"
+	"github.com/blinklabs-io/node/internal/config"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func Run(logger *slog.Logger) error {
-	// TODO: make this configurable
-	l, err := net.Listen("tcp", ":3001")
+	cfg := config.GetConfig()
+	logger.Info(fmt.Sprintf("loaded config: %+v", cfg))
+	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port))
 	if err != nil {
 		return err
 	}
-	logger.Info("listening for ouroboros node-to-node connections on :3001")
+	logger.Info(fmt.Sprintf("listening for ouroboros node-to-node connections on %s", fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port)))
 	// Metrics listener
 	http.Handle("/metrics", promhttp.Handler())
 	logger.Info("listening for prometheus metrics connections on :12798")
@@ -51,8 +52,7 @@ func Run(logger *slog.Logger) error {
 			node.WithLogger(logger),
 			// TODO: uncomment and make this configurable
 			//node.WithDataDir(".data"),
-			// TODO: make this configurable
-			node.WithNetwork("preview"),
+			node.WithNetwork(cfg.Network),
 			node.WithListeners(
 				node.ListenerConfig{
 					Listener: l,
@@ -62,21 +62,7 @@ func Run(logger *slog.Logger) error {
 			node.WithPrometheusRegistry(prometheus.DefaultRegisterer),
 			// TODO: make this configurable
 			//node.WithTracing(true),
-			// TODO: replace with parsing topology file
-			node.WithTopologyConfig(
-				&topology.TopologyConfig{
-					PublicRoots: []topology.TopologyConfigP2PPublicRoot{
-						{
-							AccessPoints: []topology.TopologyConfigP2PAccessPoint{
-								{
-									Address: "preview-node.play.dev.cardano.org",
-									Port:    3001,
-								},
-							},
-						},
-					},
-				},
-			),
+			node.WithTopologyConfig(config.GetTopologyConfig()),
 		),
 	)
 	if err != nil {
