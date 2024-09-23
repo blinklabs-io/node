@@ -6,6 +6,6 @@ RUN go mod download
 COPY . .
 RUN make build
 
-FROM cgr.dev/chainguard/glibc-dynamic AS node
+FROM debian:bookworm-slim AS node
 COPY --from=build /code/node /bin/
 ENTRYPOINT ["node"]
