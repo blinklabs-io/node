@@ -29,7 +29,10 @@ import (
 )
 
 func Run(logger *slog.Logger) error {
-	cfg := config.GetConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
 	logger.Info(fmt.Sprintf("loaded config: %+v", cfg))
 	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port))
 	if err != nil {
