@@ -7,7 +7,7 @@ require (
 	github.com/blinklabs-io/ouroboros-mock v0.3.3
 	github.com/dgraph-io/badger/v4 v4.3.0
 	github.com/glebarez/sqlite v1.11.0
-	github.com/prometheus/client_golang v1.20.3
+	github.com/prometheus/client_golang v1.20.4
 	github.com/spf13/cobra v1.8.1
 	go.opentelemetry.io/otel v1.30.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.30.0
