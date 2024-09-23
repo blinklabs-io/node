@@ -3,7 +3,7 @@ module github.com/blinklabs-io/node
 go 1.22
 
 require (
-	github.com/blinklabs-io/gouroboros v0.93.3
+	github.com/blinklabs-io/gouroboros v0.94.3
 	github.com/blinklabs-io/ouroboros-mock v0.3.3
 	github.com/dgraph-io/badger/v4 v4.3.0
 	github.com/glebarez/sqlite v1.11.0
