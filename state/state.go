@@ -408,6 +408,13 @@ func (ls *LedgerState) Tip() (ochainsync.Tip, error) {
 	var tmpBlock models.Block
 	result := ls.db.Metadata().Order("number DESC").First(&tmpBlock)
 	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			// Return dummy data when we have no blocks
+			ret = ochainsync.Tip{
+				Point: ocommon.NewPointOrigin(),
+			}
+			return ret, nil
+		}
 		return ret, result.Error
 	}
 	ret = ochainsync.Tip{
