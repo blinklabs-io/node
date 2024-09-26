@@ -251,6 +251,20 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 				}
 			}
 			// XXX: generate event for each TX/UTxO?
+			// Protocol parameter updates
+			if updateEpoch, paramUpdates := tx.ProtocolParameterUpdates(); updateEpoch > 0 {
+				for genesisHash, update := range paramUpdates {
+					tmpUpdate := models.PParamUpdate{
+						AddedSlot:   e.Point.Slot,
+						Epoch:       updateEpoch,
+						GenesisHash: genesisHash,
+						Cbor:        update.Cbor(),
+					}
+					if result := txn.Metadata().Create(&tmpUpdate); result.Error != nil {
+						return result.Error
+					}
+				}
+			}
 		}
 		return nil
 	})
