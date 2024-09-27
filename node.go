@@ -82,6 +82,7 @@ func (n *Node) Run() error {
 	// Configure connection manager
 	n.connManager = connmanager.NewConnectionManager(
 		connmanager.ConnectionManagerConfig{
+			Logger:         n.config.logger,
 			ConnClosedFunc: n.connectionManagerConnClosed,
 		},
 	)

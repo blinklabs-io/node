@@ -53,14 +53,10 @@ func GetConfig() *Config {
 }
 
 var globalTopologyConfig = &topology.TopologyConfig{
-	PublicRoots: []topology.TopologyConfigP2PPublicRoot{
+	BootstrapPeers: []topology.TopologyConfigP2PAccessPoint{
 		{
-			AccessPoints: []topology.TopologyConfigP2PAccessPoint{
-				{
-					Address: "preview-node.play.dev.cardano.org",
-					Port:    3001,
-				},
-			},
+			Address: "preview-node.play.dev.cardano.org",
+			Port:    3001,
 		},
 	},
 }
@@ -78,6 +74,6 @@ func LoadTopologyConfig() (*topology.TopologyConfig, error) {
 	return globalTopologyConfig, nil
 }
 
-func GetTopologyConfig() *topology.TopologyConfig{
+func GetTopologyConfig() *topology.TopologyConfig {
 	return globalTopologyConfig
 }

@@ -33,7 +33,8 @@ func Run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	logger.Info(fmt.Sprintf("loaded config: %+v", cfg))
+	logger.Debug(fmt.Sprintf("loaded config: %+v", cfg))
+	logger.Debug(fmt.Sprintf("resolved topology: %+v", config.GetTopologyConfig()))
 	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port))
 	if err != nil {
 		return err
