@@ -15,6 +15,8 @@
 package connmanager
 
 import (
+	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/blinklabs-io/node/topology"
@@ -70,6 +72,7 @@ type ConnectionManager struct {
 }
 
 type ConnectionManagerConfig struct {
+	Logger         *slog.Logger
 	ConnClosedFunc ConnectionManagerConnClosedFunc
 }
 
@@ -95,19 +98,33 @@ func (c *ConnectionManager) AddHost(
 	for _, tag := range tags {
 		tmpTags[tag] = true
 	}
+	cmHost := ConnectionManagerHost{
+		Address: address,
+		Port:    port,
+		Tags:    tmpTags,
+	}
+	if c.config.Logger != nil {
+		c.config.Logger.Debug(fmt.Sprintf(
+			"adding host to connection manager: %+v",
+			cmHost,
+		))
+	}
 	c.hosts = append(
 		c.hosts,
-		ConnectionManagerHost{
-			Address: address,
-			Port:    port,
-			Tags:    tmpTags,
-		},
+		cmHost,
 	)
 }
 
 func (c *ConnectionManager) AddHostsFromTopology(topologyConfig *topology.TopologyConfig) {
 	for _, host := range topologyConfig.Producers {
 		c.AddHost(host.Address, host.Port, ConnectionManagerTagHostProducer)
+	}
+	for _, bootstrapPeer := range topologyConfig.BootstrapPeers {
+		c.AddHost(
+			bootstrapPeer.Address,
+			bootstrapPeer.Port,
+			ConnectionManagerTagHostBootstrapPeer,
+		)
 	}
 	for _, localRoot := range topologyConfig.LocalRoots {
 		for _, host := range localRoot.AccessPoints {
@@ -126,13 +143,6 @@ func (c *ConnectionManager) AddHostsFromTopology(topologyConfig *topology.Topolo
 				ConnectionManagerTagHostPublicRoot,
 			)
 		}
-	}
-	for _, bootstrapPeer := range topologyConfig.BootstrapPeers {
-		c.AddHost(
-			bootstrapPeer.Address,
-			bootstrapPeer.Port,
-			ConnectionManagerTagHostBootstrapPeer,
-		)
 	}
 }
 
