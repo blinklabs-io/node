@@ -81,10 +81,16 @@ func (d *BaseDatabase) registerBadgerMetrics() {
 				badgerMetricNamePrefix+"size_bytes_vlog", "", nil, nil,
 			),
 			"badger_write_pending_num_memtable": prometheus.NewDesc(
-				badgerMetricNamePrefix+"write_pending_num_memtable", "", nil, nil,
+				badgerMetricNamePrefix+"write_pending_num_memtable",
+				"",
+				nil,
+				nil,
 			),
 			"badger_compaction_current_num_lsm": prometheus.NewDesc(
-				badgerMetricNamePrefix+"compaction_current_num_lsm", "", nil, nil,
+				badgerMetricNamePrefix+"compaction_current_num_lsm",
+				"",
+				nil,
+				nil,
 			),
 		},
 	)

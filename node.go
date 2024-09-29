@@ -46,9 +46,13 @@ type Node struct {
 func New(cfg Config) (*Node, error) {
 	eventBus := event.NewEventBus(cfg.promRegistry)
 	n := &Node{
-		config:        cfg,
-		eventBus:      eventBus,
-		mempool:       mempool.NewMempool(cfg.logger, eventBus, cfg.promRegistry),
+		config:   cfg,
+		eventBus: eventBus,
+		mempool: mempool.NewMempool(
+			cfg.logger,
+			eventBus,
+			cfg.promRegistry,
+		),
 		outboundConns: make(map[ouroboros.ConnectionId]outboundPeer),
 	}
 	if err := n.configPopulateNetworkMagic(); err != nil {
@@ -78,7 +82,11 @@ func (n *Node) Run() error {
 	}
 	n.ledgerState = state
 	// Initialize chainsync state
-	n.chainsyncState = chainsync.NewState(n.eventBus, n.ledgerState, n.config.promRegistry)
+	n.chainsyncState = chainsync.NewState(
+		n.eventBus,
+		n.ledgerState,
+		n.config.promRegistry,
+	)
 	// Configure connection manager
 	n.connManager = connmanager.NewConnectionManager(
 		connmanager.ConnectionManagerConfig{

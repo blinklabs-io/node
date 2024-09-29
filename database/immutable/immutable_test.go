@@ -41,10 +41,18 @@ func TestGetTip(t *testing.T) {
 		t.Fatalf("did not get expected tip value, got nil instead")
 	}
 	if tip.Slot != expectedSlot {
-		t.Fatalf("did not get expected slot value: expected %d, got %d", expectedSlot, tip.Slot)
+		t.Fatalf(
+			"did not get expected slot value: expected %d, got %d",
+			expectedSlot,
+			tip.Slot,
+		)
 	}
 	if hex.EncodeToString(tip.Hash) != expectedHash {
-		t.Fatalf("did not get expected hash value: expected %s, got %x", expectedHash, tip.Hash)
+		t.Fatalf(
+			"did not get expected hash value: expected %s, got %x",
+			expectedHash,
+			tip.Hash,
+		)
 	}
 }
 

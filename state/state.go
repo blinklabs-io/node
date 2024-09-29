@@ -46,7 +46,11 @@ type LedgerState struct {
 	timerCleanupConsumedUtxos *time.Timer
 }
 
-func NewLedgerState(dataDir string, eventBus *event.EventBus, logger *slog.Logger) (*LedgerState, error) {
+func NewLedgerState(
+	dataDir string,
+	eventBus *event.EventBus,
+	logger *slog.Logger,
+) (*LedgerState, error) {
 	ls := &LedgerState{
 		dataDir:  dataDir,
 		logger:   logger,
@@ -113,14 +117,23 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 			err = txn.Do(func(txn *database.Txn) error {
 				// Get UTxOs that are marked as deleted and older than our slot window
 				var tmpUtxos []models.Utxo
-				result := txn.Metadata().Where("deleted_slot <= ?", tip.Point.Slot-cleanupConsumedUtxosSlotWindow).Order("id DESC").Find(&tmpUtxos)
+				result := txn.Metadata().
+					Where("deleted_slot <= ?", tip.Point.Slot-cleanupConsumedUtxosSlotWindow).
+					Order("id DESC").
+					Find(&tmpUtxos)
 				if result.Error != nil {
-					return fmt.Errorf("failed to query consumed UTxOs: %w", result.Error)
+					return fmt.Errorf(
+						"failed to query consumed UTxOs: %w",
+						result.Error,
+					)
 				}
 				// Delete the UTxOs
 				for _, utxo := range tmpUtxos {
 					if err := models.UtxoDeleteTxn(txn, utxo); err != nil {
-						return fmt.Errorf("failed to remove consumed UTxO: %w", err)
+						return fmt.Errorf(
+							"failed to remove consumed UTxO: %w",
+							err,
+						)
 					}
 				}
 				return nil
@@ -162,7 +175,10 @@ func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
 	err := txn.Do(func(txn *database.Txn) error {
 		// Remove rolled-back blocks in reverse order
 		var tmpBlocks []models.Block
-		result := txn.Metadata().Where("slot > ?", e.Point.Slot).Order("slot DESC").Find(&tmpBlocks)
+		result := txn.Metadata().
+			Where("slot > ?", e.Point.Slot).
+			Order("slot DESC").
+			Find(&tmpBlocks)
 		if result.Error != nil {
 			return fmt.Errorf("query blocks: %w", result.Error)
 		}
@@ -173,7 +189,10 @@ func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
 		}
 		// Delete rolled-back UTxOs
 		var tmpUtxos []models.Utxo
-		result = txn.Metadata().Where("added_slot > ?", e.Point.Slot).Order("id DESC").Find(&tmpUtxos)
+		result = txn.Metadata().
+			Where("added_slot > ?", e.Point.Slot).
+			Order("id DESC").
+			Find(&tmpUtxos)
 		if result.Error != nil {
 			return fmt.Errorf("remove rolled-backup UTxOs: %w", result.Error)
 		}
@@ -183,9 +202,15 @@ func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
 			}
 		}
 		// Restore spent UTxOs
-		result = txn.Metadata().Model(models.Utxo{}).Where("deleted_slot > ?", e.Point.Slot).Update("deleted_slot", 0)
+		result = txn.Metadata().
+			Model(models.Utxo{}).
+			Where("deleted_slot > ?", e.Point.Slot).
+			Update("deleted_slot", 0)
 		if result.Error != nil {
-			return fmt.Errorf("restore spent UTxOs after rollback: %w", result.Error)
+			return fmt.Errorf(
+				"restore spent UTxOs after rollback: %w",
+				result.Error,
+			)
 		}
 		return nil
 	})
@@ -306,7 +331,11 @@ func (ls *LedgerState) addUtxo(txn *database.Txn, utxo models.Utxo) error {
 
 // consumeUtxo marks a UTxO as "deleted" without actually deleting it. This allows for a UTxO
 // to be easily on rollback
-func (ls *LedgerState) consumeUtxo(txn *database.Txn, utxoId ledger.TransactionInput, slot uint64) error {
+func (ls *LedgerState) consumeUtxo(
+	txn *database.Txn,
+	utxoId ledger.TransactionInput,
+	slot uint64,
+) error {
 	// Find UTxO
 	utxo, err := models.UtxoByRefTxn(txn, utxoId.Id().Bytes(), utxoId.Index())
 	if err != nil {
@@ -338,7 +367,10 @@ func (ls *LedgerState) addBlock(txn *database.Txn, block models.Block) error {
 	return nil
 }
 
-func (ls *LedgerState) removeBlock(txn *database.Txn, block models.Block) error {
+func (ls *LedgerState) removeBlock(
+	txn *database.Txn,
+	block models.Block,
+) error {
 	// Remove from metadata DB
 	if result := txn.Metadata().Delete(&block); result.Error != nil {
 		return result.Error
@@ -368,7 +400,10 @@ func (ls *LedgerState) RecentChainPoints(count int) ([]ocommon.Point, error) {
 	ls.RLock()
 	defer ls.RUnlock()
 	var tmpBlocks []models.Block
-	result := ls.db.Metadata().Order("number DESC").Limit(count).Find(&tmpBlocks)
+	result := ls.db.Metadata().
+		Order("number DESC").
+		Limit(count).
+		Find(&tmpBlocks)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -383,7 +418,9 @@ func (ls *LedgerState) RecentChainPoints(count int) ([]ocommon.Point, error) {
 }
 
 // GetIntersectPoint returns the intersect between the specified points and the current chain
-func (ls *LedgerState) GetIntersectPoint(points []ocommon.Point) (*ocommon.Point, error) {
+func (ls *LedgerState) GetIntersectPoint(
+	points []ocommon.Point,
+) (*ocommon.Point, error) {
 	ls.RLock()
 	defer ls.RUnlock()
 	var ret ocommon.Point
@@ -412,7 +449,10 @@ func (ls *LedgerState) GetIntersectPoint(points []ocommon.Point) (*ocommon.Point
 
 // GetChainFromPoint returns a ChainIterator starting at the specified point. If inclusive is true, the iterator
 // will start at the requested point, otherwise it will start at the next block.
-func (ls *LedgerState) GetChainFromPoint(point ocommon.Point, inclusive bool) (*ChainIterator, error) {
+func (ls *LedgerState) GetChainFromPoint(
+	point ocommon.Point,
+	inclusive bool,
+) (*ChainIterator, error) {
 	return newChainIterator(ls, point, inclusive)
 }
 
@@ -439,14 +479,19 @@ func (ls *LedgerState) Tip() (ochainsync.Tip, error) {
 }
 
 // UtxoByRef returns a single UTxO by reference
-func (ls *LedgerState) UtxoByRef(txId []byte, outputIdx uint32) (models.Utxo, error) {
+func (ls *LedgerState) UtxoByRef(
+	txId []byte,
+	outputIdx uint32,
+) (models.Utxo, error) {
 	ls.RLock()
 	defer ls.RUnlock()
 	return models.UtxoByRef(ls.db, txId, outputIdx)
 }
 
 // UtxosByAddress returns all UTxOs that belong to the specified address
-func (ls *LedgerState) UtxosByAddress(addr ledger.Address) ([]models.Utxo, error) {
+func (ls *LedgerState) UtxosByAddress(
+	addr ledger.Address,
+) ([]models.Utxo, error) {
 	ls.RLock()
 	defer ls.RUnlock()
 	return models.UtxosByAddress(ls.db, addr)

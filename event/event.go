@@ -62,7 +62,9 @@ func NewEventBus(promRegistry prometheus.Registerer) *EventBus {
 }
 
 // Subscribe allows a consumer to receive events of a particular type via a channel
-func (e *EventBus) Subscribe(eventType EventType) (EventSubscriberId, <-chan Event) {
+func (e *EventBus) Subscribe(
+	eventType EventType,
+) (EventSubscriberId, <-chan Event) {
 	e.Lock()
 	defer e.Unlock()
 	// Create event channel
@@ -81,7 +83,10 @@ func (e *EventBus) Subscribe(eventType EventType) (EventSubscriberId, <-chan Eve
 }
 
 // SubscribeFunc allows a consumer to receive events of a particular type via a callback function
-func (e *EventBus) SubscribeFunc(eventType EventType, handlerFunc EventHandlerFunc) EventSubscriberId {
+func (e *EventBus) SubscribeFunc(
+	eventType EventType,
+	handlerFunc EventHandlerFunc,
+) EventSubscriberId {
 	subId, evtCh := e.Subscribe(eventType)
 	go func(evtCh <-chan Event, handlerFunc EventHandlerFunc) {
 		for {

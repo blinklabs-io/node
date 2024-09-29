@@ -66,7 +66,9 @@ func (i *ImmutableDb) getChunkNames() ([]string, error) {
 	return ret, nil
 }
 
-func (i *ImmutableDb) getChunkNamesFromPoint(point ocommon.Point) ([]string, error) {
+func (i *ImmutableDb) getChunkNamesFromPoint(
+	point ocommon.Point,
+) ([]string, error) {
 	chunkNames, err := i.getChunkNames()
 	if err != nil {
 		return nil, err
@@ -117,19 +119,27 @@ func (i *ImmutableDb) getChunkNamesFromPoint(point ocommon.Point) ([]string, err
 	return chunkNames[lowerBound:], nil
 }
 
-func (i *ImmutableDb) getChunkPrimaryIndex(chunkName string) (*primaryIndex, error) {
+func (i *ImmutableDb) getChunkPrimaryIndex(
+	chunkName string,
+) (*primaryIndex, error) {
 	primaryFilePath := filepath.Join(
 		i.dataDir,
 		chunkName+primaryFileExtension,
 	)
 	primary := newPrimaryIndex()
 	if err := primary.Open(primaryFilePath); err != nil {
-		return nil, fmt.Errorf("failed to read primary index: %s: %w", primaryFilePath, err)
+		return nil, fmt.Errorf(
+			"failed to read primary index: %s: %w",
+			primaryFilePath,
+			err,
+		)
 	}
 	return primary, nil
 }
 
-func (i *ImmutableDb) getChunkSecondaryIndex(chunkName string) (*secondaryIndex, error) {
+func (i *ImmutableDb) getChunkSecondaryIndex(
+	chunkName string,
+) (*secondaryIndex, error) {
 	primary, err := i.getChunkPrimaryIndex(chunkName)
 	if err != nil {
 		return nil, err
@@ -140,7 +150,11 @@ func (i *ImmutableDb) getChunkSecondaryIndex(chunkName string) (*secondaryIndex,
 	)
 	secondary := newSecondaryIndex()
 	if err := secondary.Open(secondaryFilePath, primary); err != nil {
-		return nil, fmt.Errorf("failed to read secondary index: %s: %w", secondaryFilePath, err)
+		return nil, fmt.Errorf(
+			"failed to read secondary index: %s: %w",
+			secondaryFilePath,
+			err,
+		)
 	}
 	return secondary, nil
 }
@@ -158,7 +172,11 @@ func (i *ImmutableDb) getChunk(chunkName string) (*chunk, error) {
 	)
 	chunk := newChunk()
 	if err := chunk.Open(chunkFilePath, secondary); err != nil {
-		return nil, fmt.Errorf("failed to read chunk: %s: %w", chunkFilePath, err)
+		return nil, fmt.Errorf(
+			"failed to read chunk: %s: %w",
+			chunkFilePath,
+			err,
+		)
 	}
 	return chunk, nil
 }
@@ -244,7 +262,9 @@ func (i *ImmutableDb) TruncateChunksFromPoint(point ocommon.Point) error {
 	return nil
 }
 
-func (i *ImmutableDb) BlocksFromPoint(point ocommon.Point) (*BlockIterator, error) {
+func (i *ImmutableDb) BlocksFromPoint(
+	point ocommon.Point,
+) (*BlockIterator, error) {
 	chunkNames, err := i.getChunkNamesFromPoint(point)
 	if err != nil {
 		return nil, err

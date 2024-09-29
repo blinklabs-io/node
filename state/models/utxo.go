@@ -59,7 +59,11 @@ func (u *Utxo) loadCbor(txn *database.Txn) error {
 	return nil
 }
 
-func UtxoByRef(db database.Database, txId []byte, outputIdx uint32) (Utxo, error) {
+func UtxoByRef(
+	db database.Database,
+	txId []byte,
+	outputIdx uint32,
+) (Utxo, error) {
 	var ret Utxo
 	txn := db.Transaction(false)
 	err := txn.Do(func(txn *database.Txn) error {
@@ -70,9 +74,14 @@ func UtxoByRef(db database.Database, txId []byte, outputIdx uint32) (Utxo, error
 	return ret, err
 }
 
-func UtxoByRefTxn(txn *database.Txn, txId []byte, outputIdx uint32) (Utxo, error) {
+func UtxoByRefTxn(
+	txn *database.Txn,
+	txId []byte,
+	outputIdx uint32,
+) (Utxo, error) {
 	var tmpUtxo Utxo
-	result := txn.Metadata().First(&tmpUtxo, "tx_id = ? AND output_idx = ?", txId, outputIdx)
+	result := txn.Metadata().
+		First(&tmpUtxo, "tx_id = ? AND output_idx = ?", txId, outputIdx)
 	if result.Error != nil {
 		return tmpUtxo, result.Error
 	}
@@ -98,16 +107,23 @@ func UtxosByAddressTxn(txn *database.Txn, addr ledger.Address) ([]Utxo, error) {
 	// Build sub-query for address
 	var addrQuery *gorm.DB
 	if addr.PaymentKeyHash() != ledger.NewBlake2b224(nil) {
-		addrQuery = txn.Metadata().Where("payment_key = ?", addr.PaymentKeyHash().Bytes())
+		addrQuery = txn.Metadata().
+			Where("payment_key = ?", addr.PaymentKeyHash().Bytes())
 	}
 	if addr.StakeKeyHash() != ledger.NewBlake2b224(nil) {
 		if addrQuery != nil {
-			addrQuery = addrQuery.Or("staking_key = ?", addr.StakeKeyHash().Bytes())
+			addrQuery = addrQuery.Or(
+				"staking_key = ?",
+				addr.StakeKeyHash().Bytes(),
+			)
 		} else {
 			addrQuery = txn.Metadata().Where("staking_key = ?", addr.StakeKeyHash().Bytes())
 		}
 	}
-	result := txn.Metadata().Where("deleted_slot = 0").Where(addrQuery).Find(&ret)
+	result := txn.Metadata().
+		Where("deleted_slot = 0").
+		Where(addrQuery).
+		Find(&ret)
 	if result.Error != nil {
 		return nil, result.Error
 	}

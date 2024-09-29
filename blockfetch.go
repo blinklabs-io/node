@@ -77,7 +77,11 @@ func (n *Node) blockfetchServerRequestRange(
 	return nil
 }
 
-func (n *Node) blockfetchClientBlock(ctx blockfetch.CallbackContext, blockType uint, block ledger.Block) error {
+func (n *Node) blockfetchClientBlock(
+	ctx blockfetch.CallbackContext,
+	blockType uint,
+	block ledger.Block,
+) error {
 	if err := n.chainsyncState.AddBlock(block, blockType); err != nil {
 		return err
 	}

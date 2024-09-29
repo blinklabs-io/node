@@ -49,7 +49,9 @@ func (n *Node) chainsyncClientStart(connId ouroboros.ConnectionId) error {
 		return fmt.Errorf("failed to lookup connection ID: %s", connId.String())
 	}
 	oConn := conn.Conn
-	intersectPoints, err := n.ledgerState.RecentChainPoints(chainsyncIntersectPointCount)
+	intersectPoints, err := n.ledgerState.RecentChainPoints(
+		chainsyncIntersectPointCount,
+	)
 	if err != nil {
 		return err
 	}

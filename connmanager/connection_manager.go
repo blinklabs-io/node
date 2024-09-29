@@ -84,8 +84,10 @@ type ConnectionManagerHost struct {
 
 func NewConnectionManager(cfg ConnectionManagerConfig) *ConnectionManager {
 	return &ConnectionManager{
-		config:      cfg,
-		connections: make(map[ouroboros.ConnectionId]*ConnectionManagerConnection),
+		config: cfg,
+		connections: make(
+			map[ouroboros.ConnectionId]*ConnectionManagerConnection,
+		),
 	}
 }
 
@@ -115,7 +117,9 @@ func (c *ConnectionManager) AddHost(
 	)
 }
 
-func (c *ConnectionManager) AddHostsFromTopology(topologyConfig *topology.TopologyConfig) {
+func (c *ConnectionManager) AddHostsFromTopology(
+	topologyConfig *topology.TopologyConfig,
+) {
 	for _, host := range topologyConfig.Producers {
 		c.AddHost(host.Address, host.Port, ConnectionManagerTagHostProducer)
 	}

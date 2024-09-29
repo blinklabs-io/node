@@ -55,7 +55,11 @@ func (t *Txn) Blob() *badger.Txn {
 func (t *Txn) Do(fn func(*Txn) error) error {
 	if err := fn(t); err != nil {
 		if err2 := t.Rollback(); err2 != nil {
-			return fmt.Errorf("rollback failed: %w: original error: %w", err2, err)
+			return fmt.Errorf(
+				"rollback failed: %w: original error: %w",
+				err2,
+				err,
+			)
 		}
 		return err
 	}

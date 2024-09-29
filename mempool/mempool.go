@@ -72,7 +72,11 @@ type Mempool struct {
 	}
 }
 
-func NewMempool(logger *slog.Logger, eventBus *event.EventBus, promRegistry prometheus.Registerer) *Mempool {
+func NewMempool(
+	logger *slog.Logger,
+	eventBus *event.EventBus,
+	promRegistry prometheus.Registerer,
+) *Mempool {
 	m := &Mempool{
 		eventBus:  eventBus,
 		consumers: make(map[ouroboros.ConnectionId]*MempoolConsumer),
@@ -87,10 +91,12 @@ func NewMempool(logger *slog.Logger, eventBus *event.EventBus, promRegistry prom
 	m.scheduleRemoveExpired()
 	// Init metrics
 	promautoFactory := promauto.With(promRegistry)
-	m.metrics.txsProcessedNum = promautoFactory.NewCounter(prometheus.CounterOpts{
-		Name: "cardano_node_metrics_txsProcessedNum_int",
-		Help: "total transactions processed",
-	})
+	m.metrics.txsProcessedNum = promautoFactory.NewCounter(
+		prometheus.CounterOpts{
+			Name: "cardano_node_metrics_txsProcessedNum_int",
+			Help: "total transactions processed",
+		},
+	)
 	m.metrics.txsInMempool = promautoFactory.NewGauge(prometheus.GaugeOpts{
 		Name: "cardano_node_metrics_txsInMempool_int",
 		Help: "current count of mempool transactions",
