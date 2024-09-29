@@ -43,8 +43,21 @@ type outboundPeer struct {
 }
 
 func (n *Node) startOutboundConnections() {
+	n.config.logger.Debug("starting outbound connections")
 	var tmpHosts []string
 	for _, host := range n.config.topologyConfig.Producers {
+		n.config.logger.Debug(
+			fmt.Sprintf("adding legacy topology host: %s:%d", host.Address, host.Port),
+		)
+		tmpHosts = append(
+			tmpHosts,
+			net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))),
+		)
+	}
+	for _, host := range n.config.topologyConfig.BootstrapPeers {
+		n.config.logger.Debug(
+			fmt.Sprintf("adding bootstrap peer topology host: %s:%d", host.Address, host.Port),
+		)
 		tmpHosts = append(
 			tmpHosts,
 			net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))),
@@ -52,6 +65,9 @@ func (n *Node) startOutboundConnections() {
 	}
 	for _, localRoot := range n.config.topologyConfig.LocalRoots {
 		for _, host := range localRoot.AccessPoints {
+			n.config.logger.Debug(
+				fmt.Sprintf("adding localRoot topology host: %s:%d", host.Address, host.Port),
+			)
 			tmpHosts = append(
 				tmpHosts,
 				net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))),
@@ -60,6 +76,9 @@ func (n *Node) startOutboundConnections() {
 	}
 	for _, publicRoot := range n.config.topologyConfig.PublicRoots {
 		for _, host := range publicRoot.AccessPoints {
+			n.config.logger.Debug(
+				fmt.Sprintf("adding publicRoot topology host: %s:%d", host.Address, host.Port),
+			)
 			tmpHosts = append(
 				tmpHosts,
 				net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))),
@@ -106,6 +125,9 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 		dialer.LocalAddr = clientAddr
 		dialer.Control = socketControl
 	}
+	n.config.logger.Debug(
+		fmt.Sprintf("establishing connection to: %s", peer.Address),
+	)
 	tmpConn, err := dialer.Dial("tcp", peer.Address)
 	if err != nil {
 		return err
@@ -152,6 +174,9 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 		),
 	}
 	// Setup Ouroboros connection
+	n.config.logger.Debug(
+		fmt.Sprintf("establishing ouroboros protocol to node at %s", peer.Address),
+	)
 	oConn, err := ouroboros.NewConnection(
 		connOpts...,
 	)
