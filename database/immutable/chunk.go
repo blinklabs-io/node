@@ -87,7 +87,11 @@ func (c *chunk) Next() (*Block, error) {
 			return nil, err
 		}
 		if int64(n) < blockSize {
-			return nil, fmt.Errorf("did not read expected amount of block data: expected %d, got %d", blockSize, n)
+			return nil, fmt.Errorf(
+				"did not read expected amount of block data: expected %d, got %d",
+				blockSize,
+				n,
+			)
 		}
 		blkType, blkBytes, err := c.unwrapBlock(blockData)
 		if err != nil {

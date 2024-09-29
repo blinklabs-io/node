@@ -48,7 +48,11 @@ type State struct {
 	}
 }
 
-func NewState(eventBus *event.EventBus, ledgerState *state.LedgerState, promRegistry prometheus.Registerer) *State {
+func NewState(
+	eventBus *event.EventBus,
+	ledgerState *state.LedgerState,
+	promRegistry prometheus.Registerer,
+) *State {
 	s := &State{
 		eventBus:    eventBus,
 		ledgerState: ledgerState,

@@ -35,7 +35,11 @@ type ChainIteratorResult struct {
 	Rollback bool
 }
 
-func newChainIterator(ls *LedgerState, startPoint ocommon.Point, inclusive bool) (*ChainIterator, error) {
+func newChainIterator(
+	ls *LedgerState,
+	startPoint ocommon.Point,
+	inclusive bool,
+) (*ChainIterator, error) {
 	ls.RLock()
 	defer ls.RUnlock()
 	// Lookup start block in metadata DB
@@ -83,7 +87,9 @@ func (ci *ChainIterator) Next(blocking bool) (*ChainIteratorResult, error) {
 	}
 	// Wait for new block or a rollback
 	blockSubId, blockChan := ci.ls.eventBus.Subscribe(ChainBlockEventType)
-	rollbackSubId, rollbackChan := ci.ls.eventBus.Subscribe(ChainRollbackEventType)
+	rollbackSubId, rollbackChan := ci.ls.eventBus.Subscribe(
+		ChainRollbackEventType,
+	)
 	// Release read lock while we wait for new event
 	ci.ls.RUnlock()
 	select {

@@ -71,7 +71,8 @@ func BlockByPoint(db database.Database, point ocommon.Point) (Block, error) {
 
 func BlockByPointTxn(txn *database.Txn, point ocommon.Point) (Block, error) {
 	var tmpBlock Block
-	result := txn.Metadata().First(&tmpBlock, "slot = ? AND hash = ?", point.Slot, point.Hash)
+	result := txn.Metadata().
+		First(&tmpBlock, "slot = ? AND hash = ?", point.Slot, point.Hash)
 	if result.Error != nil {
 		return tmpBlock, result.Error
 	}

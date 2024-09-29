@@ -47,7 +47,11 @@ func (n *Node) startOutboundConnections() {
 	var tmpHosts []string
 	for _, host := range n.config.topologyConfig.Producers {
 		n.config.logger.Debug(
-			fmt.Sprintf("adding legacy topology host: %s:%d", host.Address, host.Port),
+			fmt.Sprintf(
+				"adding legacy topology host: %s:%d",
+				host.Address,
+				host.Port,
+			),
 		)
 		tmpHosts = append(
 			tmpHosts,
@@ -56,7 +60,11 @@ func (n *Node) startOutboundConnections() {
 	}
 	for _, host := range n.config.topologyConfig.BootstrapPeers {
 		n.config.logger.Debug(
-			fmt.Sprintf("adding bootstrap peer topology host: %s:%d", host.Address, host.Port),
+			fmt.Sprintf(
+				"adding bootstrap peer topology host: %s:%d",
+				host.Address,
+				host.Port,
+			),
 		)
 		tmpHosts = append(
 			tmpHosts,
@@ -66,7 +74,11 @@ func (n *Node) startOutboundConnections() {
 	for _, localRoot := range n.config.topologyConfig.LocalRoots {
 		for _, host := range localRoot.AccessPoints {
 			n.config.logger.Debug(
-				fmt.Sprintf("adding localRoot topology host: %s:%d", host.Address, host.Port),
+				fmt.Sprintf(
+					"adding localRoot topology host: %s:%d",
+					host.Address,
+					host.Port,
+				),
 			)
 			tmpHosts = append(
 				tmpHosts,
@@ -77,7 +89,11 @@ func (n *Node) startOutboundConnections() {
 	for _, publicRoot := range n.config.topologyConfig.PublicRoots {
 		for _, host := range publicRoot.AccessPoints {
 			n.config.logger.Debug(
-				fmt.Sprintf("adding publicRoot topology host: %s:%d", host.Address, host.Port),
+				fmt.Sprintf(
+					"adding publicRoot topology host: %s:%d",
+					host.Address,
+					host.Port,
+				),
 			)
 			tmpHosts = append(
 				tmpHosts,
@@ -105,7 +121,8 @@ func (n *Node) startOutboundConnections() {
 }
 
 func (n *Node) createOutboundConnection(peer outboundPeer) error {
-	_, span := otel.Tracer("").Start(context.TODO(), "create outbound connection")
+	_, span := otel.Tracer("").
+		Start(context.TODO(), "create outbound connection")
 	defer span.End()
 	span.SetAttributes(
 		attribute.String("peer.address", peer.Address),
@@ -175,7 +192,10 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 	}
 	// Setup Ouroboros connection
 	n.config.logger.Debug(
-		fmt.Sprintf("establishing ouroboros protocol to node at %s", peer.Address),
+		fmt.Sprintf(
+			"establishing ouroboros protocol to %s",
+			peer.Address,
+		),
 	)
 	oConn, err := ouroboros.NewConnection(
 		connOpts...,
@@ -184,7 +204,7 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 		return err
 	}
 	n.config.logger.Info(
-		fmt.Sprintf("connected to node at %s", peer.Address),
+		fmt.Sprintf("connected ouroboros to %s", peer.Address),
 	)
 	// Add to connection manager
 	n.connManager.AddConnection(oConn)

@@ -152,7 +152,10 @@ type PersistentDatabase struct {
 }
 
 // NewPersistent creates a new persistent database instance using the provided data directory
-func NewPersistent(dataDir string, logger *slog.Logger) (*PersistentDatabase, error) {
+func NewPersistent(
+	dataDir string,
+	logger *slog.Logger,
+) (*PersistentDatabase, error) {
 	// Make sure that we can read data dir, and create if it doesn't exist
 	if _, err := os.Stat(dataDir); err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {

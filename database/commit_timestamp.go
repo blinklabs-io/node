@@ -66,7 +66,11 @@ func (b *BaseDatabase) checkCommitTimestamp() error {
 		tmpTimestamp := new(big.Int).SetBytes(val).Int64()
 		// Compare values
 		if tmpTimestamp != tmpCommitTimestamp.Timestamp {
-			return fmt.Errorf("commit timestamp mismatch: %d (metadata) != %d (blob)", tmpCommitTimestamp.Timestamp, tmpTimestamp)
+			return fmt.Errorf(
+				"commit timestamp mismatch: %d (metadata) != %d (blob)",
+				tmpCommitTimestamp.Timestamp,
+				tmpTimestamp,
+			)
 		}
 		return nil
 	})
