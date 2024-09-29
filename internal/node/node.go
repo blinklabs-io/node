@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/blinklabs-io/node"
+	"github.com/blinklabs-io/node/config/cardano"
 	"github.com/blinklabs-io/node/internal/config"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -63,6 +64,14 @@ func Run(logger *slog.Logger) error {
 			os.Exit(1)
 		}
 	}()
+	var nodeCfg *cardano.CardanoNodeConfig
+	if cfg.CardanoConfig != "" {
+		tmpCfg, err := cardano.NewCardanoNodeConfigFromFile(cfg.CardanoConfig)
+		if err != nil {
+			return err
+		}
+		nodeCfg = tmpCfg
+	}
 	n, err := node.New(
 		node.NewConfig(
 			node.WithIntersectTip(true),
@@ -70,6 +79,7 @@ func Run(logger *slog.Logger) error {
 			// TODO: uncomment and make this configurable
 			//node.WithDataDir(".data"),
 			node.WithNetwork(cfg.Network),
+			node.WithCardanoNodeConfig(nodeCfg),
 			node.WithListeners(
 				node.ListenerConfig{
 					Listener: l,
