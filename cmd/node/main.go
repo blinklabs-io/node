@@ -21,12 +21,18 @@ import (
 
 	"github.com/blinklabs-io/node/internal/node"
 	"github.com/blinklabs-io/node/internal/version"
+
 	"github.com/spf13/cobra"
+	"go.uber.org/automaxprocs/maxprocs"
 )
 
 const (
 	programName = "node"
 )
+
+func slogPrintf(format string, v ...any) {
+	slog.Info(fmt.Sprintf(format, v...))
+}
 
 func main() {
 	globalFlags := struct {
@@ -52,6 +58,13 @@ func main() {
 				}),
 			)
 			slog.SetDefault(logger)
+			// Configure max processes with our logger wrapper, toss undo func
+			_, err := maxprocs.Set(maxprocs.Logger(slogPrintf))
+			if err != nil {
+				// If we hit this, something really wrong happened
+				slog.Error(err.Error())
+				os.Exit(1)
+			}
 			// Run node
 			logger.Info(
 				fmt.Sprintf(
