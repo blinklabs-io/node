@@ -17,7 +17,7 @@ require (
 	go.uber.org/goleak v1.3.0
 	golang.org/x/sys v0.25.0
 	gorm.io/gorm v1.25.12
-	gorm.io/plugin/opentelemetry v0.1.6
+	gorm.io/plugin/opentelemetry v0.1.7
 )
 
 // XXX: uncomment when testing local changes to gouroboros
