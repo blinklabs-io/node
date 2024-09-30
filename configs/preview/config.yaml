@@ -1,0 +1,14 @@
+---
+# Default config for preview network
+
+network: 'preview'
+networkMagic: 2
+
+port: 3001
+bindAddr: 0.0.0.0
+
+metrics:
+  port: 12798
+  bindAddr: 127.0.0.1
+
+topology: topology.json

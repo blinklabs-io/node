@@ -8,4 +8,6 @@ RUN make build
 
 FROM debian:bookworm-slim AS node
 COPY --from=build /code/node /bin/
+COPY ./configs /opt/cardano/configs
 ENTRYPOINT ["node"]
+CMD ["-c", "/opt/cardano/configs/preview/config.yaml"]

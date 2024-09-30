@@ -1,0 +1,14 @@
+---
+# Default config for preprod network
+
+network: 'preprod'
+networkMagic: 1
+
+port: 3001
+bindAddr: 0.0.0.0
+
+metrics:
+  port: 12798
+  bindAddr: 127.0.0.1
+
+topology: topology.json

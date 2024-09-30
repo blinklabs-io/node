@@ -1,0 +1,14 @@
+---
+# Default config for mainnet network
+
+network: 'mainnet'
+networkMagic: 764824073
+
+port: 3001
+bindAddr: 0.0.0.0
+
+metrics:
+  port: 12798
+  bindAddr: 127.0.0.1
+
+topology: topology.json

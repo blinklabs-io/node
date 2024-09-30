@@ -16,29 +16,56 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"path"
 
 	"github.com/blinklabs-io/node/topology"
+	"gopkg.in/yaml.v3"
 
 	"github.com/kelseyhightower/envconfig"
 )
 
 type Config struct {
-	BindAddr    string `split_words:"true"`
-	Network     string
-	MetricsPort uint `split_words:"true"`
-	Port        uint
-	Topology    string
+	path         string
+	BindAddr     string `split_words:"true" yaml:"bindAddr"`
+	Metrics      MetricsConfig
+	Network      string
+	NetworkMagic uint32 `yaml:"networkMagic"`
+	Port         uint
+	Topology     string
+}
+
+type MetricsConfig struct {
+	BindAddr string `yaml:"bindAddr"`
+	Port     uint
 }
 
 var globalConfig = &Config{
-	BindAddr:    "0.0.0.0",
-	Network:     "preview",
-	MetricsPort: 12798,
-	Port:        3001,
-	Topology:    "",
+	BindAddr: "0.0.0.0",
+	Network:  "preview",
+	Metrics: MetricsConfig{
+		BindAddr: "127.0.0.1",
+		Port:     12798,
+	},
+	Port: 3001,
 }
 
-func LoadConfig() (*Config, error) {
+func LoadConfig(configFile string) (*Config, error) {
+	// Load YAML config if provided
+	if configFile != "" {
+		f, err := os.Open(configFile)
+		if err != nil {
+			return nil, err
+		}
+		dec := yaml.NewDecoder(f)
+		// Require all fields provided in YAML to exist in our target object
+		dec.KnownFields(true)
+		if err := dec.Decode(&globalConfig); err != nil {
+			return nil, err
+		}
+		globalConfig.path = path.Dir(configFile)
+	}
+	// Load environment variables
 	err := envconfig.Process("cardano", globalConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error processing environment: %+v", err)
@@ -67,7 +94,11 @@ func LoadTopologyConfig() (*topology.TopologyConfig, error) {
 	if globalConfig.Topology == "" {
 		return globalTopologyConfig, nil
 	}
-	tc, err := topology.NewTopologyConfigFromFile(globalConfig.Topology)
+	topologyPath := path.Join(
+		globalConfig.path,
+		globalConfig.Topology,
+	)
+	tc, err := topology.NewTopologyConfigFromFile(topologyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load topology file: %+v", err)
 	}

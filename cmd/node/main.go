@@ -32,6 +32,7 @@ func main() {
 	globalFlags := struct {
 		version bool
 		debug   bool
+		config  string
 	}{}
 
 	rootCmd := &cobra.Command{
@@ -60,7 +61,7 @@ func main() {
 					version.GetVersionString(),
 				),
 			)
-			if err := node.Run(logger); err != nil {
+			if err := node.Run(logger, globalFlags.config); err != nil {
 				slog.Error(err.Error())
 				os.Exit(1)
 			}
@@ -72,6 +73,8 @@ func main() {
 		BoolVarP(&globalFlags.debug, "debug", "D", false, "enable debug logging")
 	rootCmd.PersistentFlags().
 		BoolVarP(&globalFlags.version, "version", "", false, "show version and exit")
+	rootCmd.PersistentFlags().
+		StringVarP(&globalFlags.config, "config", "c", "./configs/preview/config.yaml", "config file")
 
 	// Execute cobra command
 	if err := rootCmd.Execute(); err != nil {

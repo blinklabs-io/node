@@ -28,8 +28,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func Run(logger *slog.Logger) error {
-	cfg, err := config.LoadConfig()
+func Run(logger *slog.Logger, configFile string) error {
+	cfg, err := config.LoadConfig(configFile)
 	if err != nil {
 		return err
 	}
@@ -52,11 +52,11 @@ func Run(logger *slog.Logger) error {
 	logger.Info(
 		fmt.Sprintf(
 			"listening for prometheus metrics connections on %s",
-			fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.MetricsPort),
+			fmt.Sprintf("%s:%d", cfg.Metrics.BindAddr, cfg.Metrics.Port),
 		),
 	)
 	go func() {
-		if err := http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.MetricsPort), nil); err != nil {
+		if err := http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.Metrics.BindAddr, cfg.Metrics.Port), nil); err != nil {
 			logger.Error(
 				fmt.Sprintf("failed to start metrics listener: %s", err),
 			)
@@ -70,6 +70,7 @@ func Run(logger *slog.Logger) error {
 			// TODO: uncomment and make this configurable
 			//node.WithDataDir(".data"),
 			node.WithNetwork(cfg.Network),
+			node.WithNetworkMagic(cfg.NetworkMagic),
 			node.WithListeners(
 				node.ListenerConfig{
 					Listener: l,
