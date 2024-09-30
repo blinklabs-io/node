@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/blinklabs-io/gouroboros v0.95.0
-	github.com/blinklabs-io/ouroboros-mock v0.3.3
+	github.com/blinklabs-io/ouroboros-mock v0.3.4
 	github.com/dgraph-io/badger/v4 v4.3.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/kelseyhightower/envconfig v1.4.0
