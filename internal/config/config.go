@@ -23,19 +23,21 @@ import (
 )
 
 type Config struct {
-	BindAddr    string `split_words:"true"`
-	Network     string
-	MetricsPort uint `split_words:"true"`
-	Port        uint
-	Topology    string
+	BindAddr      string `split_words:"true"`
+	CardanoConfig string `envconfig:"config"`
+	Network       string
+	MetricsPort   uint `split_words:"true"`
+	Port          uint
+	Topology      string
 }
 
 var globalConfig = &Config{
-	BindAddr:    "0.0.0.0",
-	Network:     "preview",
-	MetricsPort: 12798,
-	Port:        3001,
-	Topology:    "",
+	BindAddr:      "0.0.0.0",
+	CardanoConfig: "./configs/cardano/preview/config.json",
+	Network:       "preview",
+	MetricsPort:   12798,
+	Port:          3001,
+	Topology:      "",
 }
 
 func LoadConfig() (*Config, error) {

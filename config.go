@@ -19,6 +19,7 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/blinklabs-io/node/config/cardano"
 	"github.com/blinklabs-io/node/topology"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
@@ -27,6 +28,7 @@ import (
 )
 
 type Config struct {
+	cardanoNodeConfig  *cardano.CardanoNodeConfig
 	dataDir            string
 	intersectPoints    []ocommon.Point
 	intersectTip       bool
@@ -96,6 +98,14 @@ func NewConfig(opts ...ConfigOptionFunc) Config {
 		opt(&c)
 	}
 	return c
+}
+
+// WithCardanoNodeConfig specifies the CardanoNodeConfig object to use. This is mostly used for loading genesis config files
+// referenced by the node config
+func WithCardanoNodeConfig(cardanoNodeConfig *cardano.CardanoNodeConfig) ConfigOptionFunc {
+	return func(c *Config) {
+		c.cardanoNodeConfig = cardanoNodeConfig
+	}
 }
 
 // WithDataDir specifies the persistent data directory to use. The default is to store everything in memory
