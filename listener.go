@@ -53,6 +53,7 @@ func (n *Node) startListener(l ListenerConfig) error {
 	}
 	// Build connection options
 	defaultConnOpts := []ouroboros.ConnectionOptionFunc{
+		ouroboros.WithLogger(n.config.logger),
 		ouroboros.WithNetworkMagic(n.config.networkMagic),
 		ouroboros.WithNodeToNode(!l.UseNtC),
 		ouroboros.WithServer(true),
