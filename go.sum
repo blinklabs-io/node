@@ -4,8 +4,8 @@ filippo.io/edwards25519 v1.1.0/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
-github.com/blinklabs-io/gouroboros v0.96.0 h1:UYF2fwOo9MT6uHrpwHz+1krVib6SZ9sDkZ/C5KQxwdA=
-github.com/blinklabs-io/gouroboros v0.96.0/go.mod h1:lfvV4sV5tNz/qkaLiR85pKpKqPlHfAa5wFhWGbgsXZ0=
+github.com/blinklabs-io/gouroboros v0.97.0 h1:hmQdmnnqja7p5J+RpKdMdcfXQLCV4I7cyxCww/dg/rE=
+github.com/blinklabs-io/gouroboros v0.97.0/go.mod h1:gU9pBcL1h584sVqYF8H7JJcB2x0n1HdWcmWP11VYxPE=
 github.com/blinklabs-io/ouroboros-mock v0.3.4 h1:codPfiI5vLeD6YdhKL5VwYSzy2N3Dsgx6xjcLsqFaJQ=
 github.com/blinklabs-io/ouroboros-mock v0.3.4/go.mod h1:e/wgG1ZYVenroN2XEMXy7DgEfdmP7KXVRHIQKuh8E/0=
 github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=
@@ -138,8 +138,8 @@ github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-github.com/utxorpc/go-codegen v0.9.0 h1:sV5vK/QiQs3WvKynRVo+U+5n2tmKU7yMz5y3rEX90Hg=
-github.com/utxorpc/go-codegen v0.9.0/go.mod h1:+npvJc9wftIf8JMtWaRXxwjX0YlOCpNp1OlZVioNEO0=
+github.com/utxorpc/go-codegen v0.10.0 h1:EVRNc136CThXbbGeYV/oIy6NKfcZGLH2QSRmLTPE6TQ=
+github.com/utxorpc/go-codegen v0.10.0/go.mod h1:+npvJc9wftIf8JMtWaRXxwjX0YlOCpNp1OlZVioNEO0=
 github.com/x448/float16 v0.8.4 h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=
 github.com/x448/float16 v0.8.4/go.mod h1:14CWIYCyZA/cWjXOioeEpHeN/83MdbZDRQHoFcYsOfg=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
