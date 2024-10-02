@@ -152,6 +152,7 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 	// Build connection options
 	connOpts := []ouroboros.ConnectionOptionFunc{
 		ouroboros.WithConnection(tmpConn),
+		ouroboros.WithLogger(n.config.logger),
 		ouroboros.WithNetworkMagic(n.config.networkMagic),
 		ouroboros.WithNodeToNode(true),
 		ouroboros.WithKeepAlive(true),
