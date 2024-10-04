@@ -34,36 +34,14 @@ func Run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	logger.Debug(fmt.Sprintf("loaded config: %+v", cfg))
+	logger.Debug(fmt.Sprintf("config: %+v", cfg))
 	logger.Debug(
-		fmt.Sprintf("resolved topology: %+v", config.GetTopologyConfig()),
+		fmt.Sprintf("topology: %+v", config.GetTopologyConfig()),
 	)
 	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port))
 	if err != nil {
 		return err
 	}
-	logger.Info(
-		fmt.Sprintf(
-			"listening for ouroboros node-to-node connections on %s",
-			fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port),
-		),
-	)
-	// Metrics listener
-	http.Handle("/metrics", promhttp.Handler())
-	logger.Info(
-		fmt.Sprintf(
-			"listening for prometheus metrics connections on %s",
-			fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.MetricsPort),
-		),
-	)
-	go func() {
-		if err := http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.MetricsPort), nil); err != nil {
-			logger.Error(
-				fmt.Sprintf("failed to start metrics listener: %s", err),
-			)
-			os.Exit(1)
-		}
-	}()
 	var nodeCfg *cardano.CardanoNodeConfig
 	if cfg.CardanoConfig != "" {
 		tmpCfg, err := cardano.NewCardanoNodeConfigFromFile(cfg.CardanoConfig)
@@ -71,7 +49,19 @@ func Run(logger *slog.Logger) error {
 			return err
 		}
 		nodeCfg = tmpCfg
+		logger.Debug(
+			fmt.Sprintf(
+				"node: cardano node config: %+v",
+				nodeCfg,
+			),
+		)
 	}
+	logger.Info(
+		fmt.Sprintf(
+			"listener: ouroboros node-to-node connections on %s",
+			fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port),
+		),
+	)
 	n, err := node.New(
 		node.NewConfig(
 			node.WithIntersectTip(true),
@@ -95,6 +85,22 @@ func Run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	// Metrics listener
+	http.Handle("/metrics", promhttp.Handler())
+	logger.Info(
+		fmt.Sprintf(
+			"metrics: prometheus metrics on %s",
+			fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.MetricsPort),
+		),
+	)
+	go func() {
+		if err := http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.MetricsPort), nil); err != nil {
+			logger.Error(
+				fmt.Sprintf("metrics: failed to start listener: %s", err),
+			)
+			os.Exit(1)
+		}
+	}()
 	if err := n.Run(); err != nil {
 		return err
 	}
