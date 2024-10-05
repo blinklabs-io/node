@@ -107,7 +107,7 @@ func (c *ConnectionManager) AddHost(
 	}
 	if c.config.Logger != nil {
 		c.config.Logger.Debug(fmt.Sprintf(
-			"adding host to connection manager: %+v",
+			"connmanager: adding host: %+v",
 			cmHost,
 		))
 	}

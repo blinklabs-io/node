@@ -43,12 +43,12 @@ type outboundPeer struct {
 }
 
 func (n *Node) startOutboundConnections() {
-	n.config.logger.Debug("starting outbound connections")
+	n.config.logger.Debug("outbound: starting connections")
 	var tmpHosts []string
 	for _, host := range n.config.topologyConfig.Producers {
 		n.config.logger.Debug(
 			fmt.Sprintf(
-				"adding legacy topology host: %s:%d",
+				"outbound: adding legacy topology host: %s:%d",
 				host.Address,
 				host.Port,
 			),
@@ -61,7 +61,7 @@ func (n *Node) startOutboundConnections() {
 	for _, host := range n.config.topologyConfig.BootstrapPeers {
 		n.config.logger.Debug(
 			fmt.Sprintf(
-				"adding bootstrap peer topology host: %s:%d",
+				"outbound: adding bootstrap peer topology host: %s:%d",
 				host.Address,
 				host.Port,
 			),
@@ -75,7 +75,7 @@ func (n *Node) startOutboundConnections() {
 		for _, host := range localRoot.AccessPoints {
 			n.config.logger.Debug(
 				fmt.Sprintf(
-					"adding localRoot topology host: %s:%d",
+					"outbound: adding localRoot topology host: %s:%d",
 					host.Address,
 					host.Port,
 				),
@@ -90,7 +90,7 @@ func (n *Node) startOutboundConnections() {
 		for _, host := range publicRoot.AccessPoints {
 			n.config.logger.Debug(
 				fmt.Sprintf(
-					"adding publicRoot topology host: %s:%d",
+					"outbound: adding publicRoot topology host: %s:%d",
 					host.Address,
 					host.Port,
 				),
@@ -108,7 +108,7 @@ func (n *Node) startOutboundConnections() {
 			if err := n.createOutboundConnection(peer); err != nil {
 				n.config.logger.Error(
 					fmt.Sprintf(
-						"failed to establish connection to %s: %s",
+						"outbound: failed to establish connection to %s: %s",
 						peer.Address,
 						err,
 					),
@@ -143,7 +143,7 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 		dialer.Control = socketControl
 	}
 	n.config.logger.Debug(
-		fmt.Sprintf("establishing connection to: %s", peer.Address),
+		fmt.Sprintf("outbound: establishing TCP connection to: %s", peer.Address),
 	)
 	tmpConn, err := dialer.Dial("tcp", peer.Address)
 	if err != nil {
@@ -194,7 +194,7 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 	// Setup Ouroboros connection
 	n.config.logger.Debug(
 		fmt.Sprintf(
-			"establishing ouroboros protocol to %s",
+			"outbound: establishing ouroboros protocol to %s",
 			peer.Address,
 		),
 	)
@@ -205,7 +205,7 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 		return err
 	}
 	n.config.logger.Info(
-		fmt.Sprintf("connected ouroboros to %s", peer.Address),
+		fmt.Sprintf("outbound: connected ouroboros to %s", peer.Address),
 	)
 	// Add to connection manager
 	n.connManager.AddConnection(oConn)
@@ -240,7 +240,7 @@ func (n *Node) reconnectOutboundConnection(peer outboundPeer) {
 		}
 		n.config.logger.Info(
 			fmt.Sprintf(
-				"delaying %s before reconnecting to %s",
+				"outbound: delaying %s before reconnecting to %s",
 				peer.ReconnectDelay,
 				peer.Address,
 			),
@@ -249,7 +249,7 @@ func (n *Node) reconnectOutboundConnection(peer outboundPeer) {
 		if err := n.createOutboundConnection(peer); err != nil {
 			n.config.logger.Error(
 				fmt.Sprintf(
-					"failed to establish connection to %s: %s",
+					"outbound: failed to establish connection to %s: %s",
 					peer.Address,
 					err,
 				),
