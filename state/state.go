@@ -28,6 +28,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/blinklabs-io/gouroboros/ledger"
+	"github.com/blinklabs-io/gouroboros/ledger/byron"
 	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 )
@@ -44,6 +45,8 @@ type LedgerState struct {
 	db                        database.Database
 	eventBus                  *event.EventBus
 	timerCleanupConsumedUtxos *time.Timer
+	// TODO: move this into the DB
+	currentEra uint8
 }
 
 func NewLedgerState(
@@ -245,9 +248,50 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 		Type:   e.Type,
 		Cbor:   e.Block.Cbor(),
 	}
+	// TODO: track this using protocol params and hard forks
+	ls.currentEra = e.Block.Era().Id
 	// Start a transaction
 	txn := ls.db.Transaction(true)
 	err := txn.Do(func(txn *database.Txn) error {
+		// Check for epoch change
+		latestEpoch, err := models.EpochLatestTxn(txn)
+		if err != nil {
+			if err != gorm.ErrRecordNotFound {
+				return err
+			}
+			// Create initial epoch
+			latestEpoch = models.Epoch{
+				EpochId:             0,
+				EraId:               ls.currentEra,
+				StartSlot:           0,
+				SlotLengthInSeconds: 20,
+				LengthInSlots:       21600,
+			}
+			if result := txn.Metadata().Create(&latestEpoch); result.Error != nil {
+				return result.Error
+			}
+			ls.logger.Debug("ledger: added initial epoch to DB", "epoch", fmt.Sprintf("%#v", latestEpoch))
+		}
+		if e.Point.Slot > latestEpoch.StartSlot+uint64(latestEpoch.LengthInSlots) {
+			// Create next epoch record
+			newEpoch := models.Epoch{
+				EpochId:   latestEpoch.EpochId + 1,
+				EraId:     ls.currentEra,
+				StartSlot: latestEpoch.StartSlot + uint64(latestEpoch.LengthInSlots),
+			}
+			// TODO: replace with protocol param lookups
+			if ls.currentEra == byron.EraIdByron {
+				newEpoch.SlotLengthInSeconds = 20
+				newEpoch.LengthInSlots = 21600
+			} else {
+				newEpoch.SlotLengthInSeconds = 1
+				newEpoch.LengthInSlots = 432000
+			}
+			if result := txn.Metadata().Create(&newEpoch); result.Error != nil {
+				return result.Error
+			}
+			ls.logger.Debug("ledger: added next epoch to DB", "epoch", fmt.Sprintf("%#v", newEpoch))
+		}
 		// Add block to database
 		if err := ls.addBlock(txn, tmpBlock); err != nil {
 			return fmt.Errorf("add block: %w", err)
