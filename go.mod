@@ -2,6 +2,8 @@ module github.com/blinklabs-io/node
 
 go 1.22
 
+toolchain go1.22.6
+
 require (
 	github.com/blinklabs-io/gouroboros v0.98.0
 	github.com/blinklabs-io/ouroboros-mock v0.3.4
