@@ -110,11 +110,16 @@ func (n *Node) startListener(l ListenerConfig) error {
 			// Accept connection
 			conn, err := l.Listener.Accept()
 			if err != nil {
-				n.config.logger.Error(fmt.Sprintf("accept failed: %s", err))
+				n.config.logger.Error(
+					fmt.Sprintf("listener: accept failed: %s", err),
+				)
 				continue
 			}
 			n.config.logger.Info(
-				fmt.Sprintf("accepted connection from %s", conn.RemoteAddr()),
+				fmt.Sprintf(
+					"listener: accepted connection from %s",
+					conn.RemoteAddr(),
+				),
 			)
 			// Setup Ouroboros connection
 			connOpts := append(
@@ -124,7 +129,10 @@ func (n *Node) startListener(l ListenerConfig) error {
 			oConn, err := ouroboros.NewConnection(connOpts...)
 			if err != nil {
 				n.config.logger.Error(
-					fmt.Sprintf("failed to setup connection: %s", err),
+					fmt.Sprintf(
+						"listener: failed to setup connection: %s",
+						err,
+					),
 				)
 				continue
 			}

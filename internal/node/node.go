@@ -58,7 +58,7 @@ func Run(logger *slog.Logger) error {
 	}
 	logger.Info(
 		fmt.Sprintf(
-			"listener: ouroboros node-to-node connections on %s",
+			"node: listening for ouroboros node-to-node connections on %s",
 			fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port),
 		),
 	)
@@ -89,14 +89,14 @@ func Run(logger *slog.Logger) error {
 	http.Handle("/metrics", promhttp.Handler())
 	logger.Info(
 		fmt.Sprintf(
-			"metrics: prometheus metrics on %s",
+			"node: serving prometheus metrics on %s",
 			fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.MetricsPort),
 		),
 	)
 	go func() {
 		if err := http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.MetricsPort), nil); err != nil {
 			logger.Error(
-				fmt.Sprintf("metrics: failed to start listener: %s", err),
+				fmt.Sprintf("node: failed to start metrics listener: %s", err),
 			)
 			os.Exit(1)
 		}

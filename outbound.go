@@ -143,7 +143,10 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 		dialer.Control = socketControl
 	}
 	n.config.logger.Debug(
-		fmt.Sprintf("outbound: establishing TCP connection to: %s", peer.Address),
+		fmt.Sprintf(
+			"outbound: establishing TCP connection to: %s",
+			peer.Address,
+		),
 	)
 	tmpConn, err := dialer.Dial("tcp", peer.Address)
 	if err != nil {

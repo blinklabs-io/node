@@ -102,7 +102,9 @@ func NewConfig(opts ...ConfigOptionFunc) Config {
 
 // WithCardanoNodeConfig specifies the CardanoNodeConfig object to use. This is mostly used for loading genesis config files
 // referenced by the node config
-func WithCardanoNodeConfig(cardanoNodeConfig *cardano.CardanoNodeConfig) ConfigOptionFunc {
+func WithCardanoNodeConfig(
+	cardanoNodeConfig *cardano.CardanoNodeConfig,
+) ConfigOptionFunc {
 	return func(c *Config) {
 		c.cardanoNodeConfig = cardanoNodeConfig
 	}

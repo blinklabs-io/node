@@ -108,7 +108,7 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 			tip, err := ls.Tip()
 			if err != nil {
 				ls.logger.Error(
-					fmt.Sprintf("failed to get tip: %s", err),
+					fmt.Sprintf("ledger: failed to get tip: %s", err),
 				)
 				return
 			}
@@ -139,7 +139,7 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 				return nil
 			})
 			if err != nil {
-				ls.logger.Error(err.Error())
+				ls.logger.Error(fmt.Sprintf("ledger: %s", err))
 				return
 			}
 		},
@@ -154,7 +154,7 @@ func (ls *LedgerState) handleEventChainSync(evt event.Event) {
 		if err := ls.handleEventChainSyncRollback(e); err != nil {
 			// TODO: actually handle this error
 			ls.logger.Error(
-				fmt.Sprintf("failed to handle rollback: %s", err),
+				fmt.Sprintf("ledger: failed to handle rollback: %s", err),
 			)
 			return
 		}
@@ -162,7 +162,7 @@ func (ls *LedgerState) handleEventChainSync(evt event.Event) {
 		if err := ls.handleEventChainSyncBlock(e); err != nil {
 			// TODO: actually handle this error
 			ls.logger.Error(
-				fmt.Sprintf("failed to handle block: %s", err),
+				fmt.Sprintf("ledger: failed to handle block: %s", err),
 			)
 			return
 		}
@@ -228,7 +228,7 @@ func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
 		),
 	)
 	ls.logger.Info(fmt.Sprintf(
-		"chain rolled back, new tip: %x at slot %d",
+		"ledger: chain rolled back, new tip: %x at slot %d",
 		e.Point.Hash,
 		e.Point.Slot,
 	))
@@ -308,7 +308,7 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 		),
 	)
 	ls.logger.Info(fmt.Sprintf(
-		"chain extended, new tip: %s at slot %d",
+		"ledger: chain extended, new tip: %s at slot %d",
 		e.Block.Hash(),
 		e.Block.SlotNumber(),
 	))
