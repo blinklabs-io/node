@@ -70,7 +70,10 @@ func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
 			)
 			if err != nil {
 				n.config.logger.Error(
-					fmt.Sprintf("failed to request TxIds: %s", err),
+					fmt.Sprintf(
+						"txsubmission: failed to request TxIds: %s",
+						err,
+					),
 				)
 				return
 			}
@@ -84,7 +87,10 @@ func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
 				txs, err := ctx.Server.RequestTxs(requestTxIds)
 				if err != nil {
 					n.config.logger.Error(
-						fmt.Sprintf("failed to request Txs: %s", err),
+						fmt.Sprintf(
+							"txsubmission: failed to request Txs: %s",
+							err,
+						),
 					)
 					return
 				}
@@ -97,14 +103,14 @@ func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
 					if err != nil {
 						n.config.logger.Error(
 							fmt.Sprintf(
-								"failed to parse transaction CBOR: %s",
+								"txsubmission: failed to parse transaction CBOR: %s",
 								err,
 							),
 						)
 						return
 					}
 					n.config.logger.Debug(
-						"received TX via TxSubmission",
+						"txsubmission: received tx",
 						slog.String("tx_hash", tx.Hash()),
 						slog.String("connection_id", ctx.ConnectionId.String()),
 					)
@@ -120,7 +126,7 @@ func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
 					if err != nil {
 						n.config.logger.Error(
 							fmt.Sprintf(
-								"failed to add TX %s to mempool: %s",
+								"txsubmission: failed to add tx %s to mempool: %s",
 								tx.Hash(),
 								err,
 							),

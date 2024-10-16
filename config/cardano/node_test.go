@@ -46,7 +46,11 @@ func TestCardanoNodeConfig(t *testing.T) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 	if !reflect.DeepEqual(cfg, expectedCardanoNodeConfig) {
-		t.Fatalf("did not get expected object\n     got: %#v\n  wanted: %#v\n", cfg, expectedCardanoNodeConfig)
+		t.Fatalf(
+			"did not get expected object\n     got: %#v\n  wanted: %#v\n",
+			cfg,
+			expectedCardanoNodeConfig,
+		)
 	}
 	t.Run("Byron genesis", func(t *testing.T) {
 		g, err := cfg.ByronGenesis()

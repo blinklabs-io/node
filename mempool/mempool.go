@@ -172,7 +172,7 @@ func (m *Mempool) removeExpired() {
 			m.removeTransaction(tx.Hash)
 			m.logger.Debug(
 				fmt.Sprintf(
-					"removed expired transaction %s from mempool",
+					"mempool: removed expired transaction %s",
 					tx.Hash,
 				),
 			)
@@ -200,7 +200,7 @@ func (m *Mempool) AddTransaction(tx MempoolTransaction) error {
 		tx.LastSeen = time.Now()
 		m.logger.Debug(
 			fmt.Sprintf(
-				"updated last seen for transaction %s in mempool",
+				"mempool: updated last seen for transaction %s",
 				tx.Hash,
 			),
 		)
@@ -209,7 +209,7 @@ func (m *Mempool) AddTransaction(tx MempoolTransaction) error {
 	// Add transaction record
 	m.transactions = append(m.transactions, &tx)
 	m.logger.Debug(
-		fmt.Sprintf("added transaction %s to mempool", tx.Hash),
+		fmt.Sprintf("mempool: added transaction %s", tx.Hash),
 	)
 	m.metrics.txsProcessedNum.Inc()
 	m.metrics.txsInMempool.Inc()
@@ -264,7 +264,7 @@ func (m *Mempool) RemoveTransaction(hash string) {
 	defer m.Unlock()
 	if m.removeTransaction(hash) {
 		m.logger.Debug(
-			fmt.Sprintf("removed transaction %s from mempool", hash),
+			fmt.Sprintf("mempool: removed transaction %s from mempool", hash),
 		)
 	}
 }
