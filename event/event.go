@@ -113,8 +113,9 @@ func (e *EventBus) Unsubscribe(eventType EventType, subId EventSubscriberId) {
 // Publish allows a producer to send an event of a particular type to all subscribers
 func (e *EventBus) Publish(eventType EventType, evt Event) {
 	e.Lock()
-	defer e.Unlock()
-	if subs, ok := e.subscribers[eventType]; ok {
+	subs, ok := e.subscribers[eventType]
+	e.Unlock()
+	if ok {
 		for _, subCh := range subs {
 			// NOTE: this is purposely a blocking operation to prevent dropping data
 			// XXX: do we maybe want to detect a blocked channel and temporarily set it aside
