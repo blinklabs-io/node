@@ -22,3 +22,6 @@ go.work
 
 # Program binary
 /node
+
+# Local data directory
+/.node

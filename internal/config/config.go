@@ -25,6 +25,7 @@ import (
 type Config struct {
 	BindAddr      string `split_words:"true"`
 	CardanoConfig string `envconfig:"config"`
+	DataDir       string `split_words:"true"`
 	Network       string
 	MetricsPort   uint `split_words:"true"`
 	Port          uint
@@ -34,6 +35,7 @@ type Config struct {
 var globalConfig = &Config{
 	BindAddr:      "0.0.0.0",
 	CardanoConfig: "./configs/cardano/preview/config.json",
+	DataDir:       ".node",
 	Network:       "preview",
 	MetricsPort:   12798,
 	Port:          3001,

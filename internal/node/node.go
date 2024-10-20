@@ -66,8 +66,7 @@ func Run(logger *slog.Logger) error {
 		node.NewConfig(
 			node.WithIntersectTip(true),
 			node.WithLogger(logger),
-			// TODO: uncomment and make this configurable
-			//node.WithDataDir(".data"),
+			node.WithDataDir(cfg.DataDir),
 			node.WithNetwork(cfg.Network),
 			node.WithCardanoNodeConfig(nodeCfg),
 			node.WithListeners(
