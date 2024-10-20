@@ -48,8 +48,8 @@ type Config struct {
 func (n *Node) configPopulateNetworkMagic() error {
 	if n.config.networkMagic == 0 && n.config.network != "" {
 		tmpCfg := n.config
-		tmpNetwork := ouroboros.NetworkByName(n.config.network)
-		if tmpNetwork == ouroboros.NetworkInvalid {
+		tmpNetwork, ok := ouroboros.NetworkByName(n.config.network)
+		if !ok {
 			return fmt.Errorf("unknown network name: %s", n.config.network)
 		}
 		tmpCfg.networkMagic = tmpNetwork.NetworkMagic

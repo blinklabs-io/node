@@ -19,6 +19,7 @@ import (
 
 	"github.com/blinklabs-io/node/topology"
 
+	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/kelseyhightower/envconfig"
 )
 
@@ -58,17 +59,27 @@ func GetConfig() *Config {
 	return globalConfig
 }
 
-var globalTopologyConfig = &topology.TopologyConfig{
-	BootstrapPeers: []topology.TopologyConfigP2PAccessPoint{
-		{
-			Address: "preview-node.play.dev.cardano.org",
-			Port:    3001,
-		},
-	},
-}
+var globalTopologyConfig = &topology.TopologyConfig{}
 
 func LoadTopologyConfig() (*topology.TopologyConfig, error) {
 	if globalConfig.Topology == "" {
+		// Use default bootstrap peers for specified network
+		network, ok := ouroboros.NetworkByName(globalConfig.Network)
+		if !ok {
+			return nil, fmt.Errorf("unknown network: %s", globalConfig.Network)
+		}
+		if len(network.BootstrapPeers) == 0 {
+			return nil, fmt.Errorf("no known bootstrap peers for network %s", globalConfig.Network)
+		}
+		for _, peer := range network.BootstrapPeers {
+			globalTopologyConfig.BootstrapPeers = append(
+				globalTopologyConfig.BootstrapPeers,
+				topology.TopologyConfigP2PAccessPoint{
+					Address: peer.Address,
+					Port:    peer.Port,
+				},
+			)
+		}
 		return globalTopologyConfig, nil
 	}
 	tc, err := topology.NewTopologyConfigFromFile(globalConfig.Topology)
