@@ -13,5 +13,5 @@ ENV CARDANO_CONFIG=/opt/cardano/config/preview/config.json
 # Create data dir owned by container user and use it as default dir
 VOLUME /data
 WORKDIR /data
-ENV CARDANO_DATA_DIR=/data
+ENV CARDANO_DATABASE_PATH=/data
 ENTRYPOINT ["node"]

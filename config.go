@@ -110,8 +110,8 @@ func WithCardanoNodeConfig(
 	}
 }
 
-// WithDataDir specifies the persistent data directory to use. The default is to store everything in memory
-func WithDataDir(dataDir string) ConfigOptionFunc {
+// WithDatabasePath specifies the persistent data directory to use. The default is to store everything in memory
+func WithDatabasePath(dataDir string) ConfigOptionFunc {
 	return func(c *Config) {
 		c.dataDir = dataDir
 	}
