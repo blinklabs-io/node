@@ -210,6 +210,7 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 	n.config.logger.Info(
 		fmt.Sprintf("outbound: connected ouroboros to %s", peer.Address),
 	)
+	peer.ReconnectCount = 0
 	// Add to connection manager
 	n.connManager.AddConnection(oConn)
 	// Add to outbound connection tracking
@@ -241,10 +242,12 @@ func (n *Node) reconnectOutboundConnection(peer outboundPeer) {
 		} else if peer.ReconnectDelay < maxReconnectDelay {
 			peer.ReconnectDelay = peer.ReconnectDelay * reconnectBackoffFactor
 		}
+		peer.ReconnectCount += 1
 		n.config.logger.Info(
 			fmt.Sprintf(
-				"outbound: delaying %s before reconnecting to %s",
+				"outbound: delaying %s (retry %d) before reconnecting to %s",
 				peer.ReconnectDelay,
+				peer.ReconnectCount,
 				peer.Address,
 			),
 		)
@@ -259,6 +262,7 @@ func (n *Node) reconnectOutboundConnection(peer outboundPeer) {
 			)
 			continue
 		}
+		peer.ReconnectCount = 0
 		return
 	}
 }
