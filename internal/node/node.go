@@ -19,6 +19,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	"github.com/blinklabs-io/node"
@@ -84,7 +85,7 @@ func Run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	// Metrics listener
+	// Metrics and debug listener
 	http.Handle("/metrics", promhttp.Handler())
 	logger.Info(
 		fmt.Sprintf(
