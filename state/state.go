@@ -326,7 +326,7 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 					tmpUpdate := models.PParamUpdate{
 						AddedSlot:   e.Point.Slot,
 						Epoch:       updateEpoch,
-						GenesisHash: genesisHash,
+						GenesisHash: genesisHash.Bytes(),
 						Cbor:        update.Cbor(),
 					}
 					if result := txn.Metadata().Create(&tmpUpdate); result.Error != nil {

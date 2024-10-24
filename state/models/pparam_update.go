@@ -18,7 +18,7 @@ type PParamUpdate struct {
 	ID          uint `gorm:"primarykey"`
 	AddedSlot   uint64
 	Epoch       uint64
-	GenesisHash [28]byte
+	GenesisHash []byte
 	Cbor        []byte
 }
 
