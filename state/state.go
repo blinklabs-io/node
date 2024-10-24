@@ -115,35 +115,45 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 				)
 				return
 			}
-			// Perform updates in a transaction
-			txn := ls.db.Transaction(true)
-			err = txn.Do(func(txn *database.Txn) error {
-				// Get UTxOs that are marked as deleted and older than our slot window
-				var tmpUtxos []models.Utxo
-				result := txn.Metadata().
-					Where("deleted_slot <= ?", tip.Point.Slot-cleanupConsumedUtxosSlotWindow).
-					Order("id DESC").
-					Find(&tmpUtxos)
-				if result.Error != nil {
-					return fmt.Errorf(
-						"failed to query consumed UTxOs: %w",
-						result.Error,
-					)
-				}
-				// Delete the UTxOs
-				for _, utxo := range tmpUtxos {
-					if err := models.UtxoDeleteTxn(txn, utxo); err != nil {
+			for {
+				// Perform updates in a transaction
+				batchDone := false
+				txn := ls.db.Transaction(true)
+				err = txn.Do(func(txn *database.Txn) error {
+					// Get UTxOs that are marked as deleted and older than our slot window
+					var tmpUtxos []models.Utxo
+					result := txn.Metadata().
+						Where("deleted_slot <= ?", tip.Point.Slot-cleanupConsumedUtxosSlotWindow).
+						Order("id DESC").Limit(1000).
+						Find(&tmpUtxos)
+					if result.Error != nil {
 						return fmt.Errorf(
-							"failed to remove consumed UTxO: %w",
-							err,
+							"failed to query consumed UTxOs: %w",
+							result.Error,
 						)
 					}
+					if len(tmpUtxos) == 0 {
+						batchDone = true
+						return nil
+					}
+					// Delete the UTxOs
+					for _, utxo := range tmpUtxos {
+						if err := models.UtxoDeleteTxn(txn, utxo); err != nil {
+							return fmt.Errorf(
+								"failed to remove consumed UTxO: %w",
+								err,
+							)
+						}
+					}
+					return nil
+				})
+				if err != nil {
+					ls.logger.Error(fmt.Sprintf("ledger: %s", err))
+					return
 				}
-				return nil
-			})
-			if err != nil {
-				ls.logger.Error(fmt.Sprintf("ledger: %s", err))
-				return
+				if batchDone {
+					break
+				}
 			}
 		},
 	)
