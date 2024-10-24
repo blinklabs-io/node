@@ -25,13 +25,13 @@ import (
 )
 
 type Utxo struct {
-	ID          uint `gorm:"primarykey"`
-	TxId        []byte
-	OutputIdx   uint32
+	ID          uint   `gorm:"primarykey"`
+	TxId        []byte `gorm:"index:tx_id_output_idx"`
+	OutputIdx   uint32 `gorm:"index:tx_id_output_idx"`
 	AddedSlot   uint64
 	DeletedSlot uint64
-	PaymentKey  []byte
-	StakingKey  []byte
+	PaymentKey  []byte `gorm:"index"`
+	StakingKey  []byte `gorm:"index"`
 	Cbor        []byte `gorm:"-"` // This is here for convenience but not represented in the metadata DB
 }
 
