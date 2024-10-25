@@ -26,10 +26,10 @@ import (
 )
 
 type Block struct {
-	ID     uint `gorm:"primarykey"`
-	Slot   uint64
-	Number uint64
-	Hash   []byte
+	ID     uint   `gorm:"primarykey"`
+	Slot   uint64 `gorm:"index:slot_hash"`
+	Number uint64 `gorm:"index"`
+	Hash   []byte `gorm:"index:slot_hash"`
 	Type   uint
 	Cbor   []byte `gorm:"-"` // This is here for convenience but not represented in the metadata DB
 }
