@@ -18,5 +18,6 @@ package models
 var MigrateModels = []any{
 	&Block{},
 	&Epoch{},
+	&PParamUpdate{},
 	&Utxo{},
 }
