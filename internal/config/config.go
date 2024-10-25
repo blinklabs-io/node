@@ -27,6 +27,7 @@ type Config struct {
 	BindAddr      string `split_words:"true"`
 	CardanoConfig string `envconfig:"config"`
 	DatabasePath  string `split_words:"true"`
+	IntersectTip  bool   `split_words:"true"`
 	Network       string
 	MetricsPort   uint `split_words:"true"`
 	Port          uint
@@ -37,6 +38,7 @@ var globalConfig = &Config{
 	BindAddr:      "0.0.0.0",
 	CardanoConfig: "./configs/cardano/preview/config.json",
 	DatabasePath:  ".node",
+	IntersectTip:  false,
 	Network:       "preview",
 	MetricsPort:   12798,
 	Port:          3001,
