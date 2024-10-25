@@ -477,8 +477,16 @@ func (ls *LedgerState) GetIntersectPoint(
 ) (*ocommon.Point, error) {
 	ls.RLock()
 	defer ls.RUnlock()
+	tip, err := ls.Tip()
+	if err != nil {
+		return nil, err
+	}
 	var ret ocommon.Point
 	for _, point := range points {
+		// Ignore points with a slot later than our current tip
+		if point.Slot > tip.Point.Slot {
+			continue
+		}
 		// Ignore points with a slot earlier than an existing match
 		if point.Slot < ret.Slot {
 			continue
