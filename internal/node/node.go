@@ -65,7 +65,6 @@ func Run(logger *slog.Logger) error {
 	)
 	n, err := node.New(
 		node.NewConfig(
-			node.WithIntersectTip(true),
 			node.WithLogger(logger),
 			node.WithDatabasePath(cfg.DatabasePath),
 			node.WithNetwork(cfg.Network),
