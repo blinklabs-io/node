@@ -475,8 +475,12 @@ func (ls *LedgerState) RecentChainPoints(count int) ([]ocommon.Point, error) {
 func (ls *LedgerState) GetIntersectPoint(
 	points []ocommon.Point,
 ) (*ocommon.Point, error) {
-	ls.RLock()
-	defer ls.RUnlock()
+	// Try to acquire a read lock if we can, but skip if we can't. This avoids a deadlock if
+	// our caller also holds the read lock and another routine tries to acquire a write lock
+	// TODO: figure out something better for handling this
+	if ls.TryRLock() {
+		defer ls.RUnlock()
+	}
 	tip, err := ls.Tip()
 	if err != nil {
 		return nil, err
