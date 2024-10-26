@@ -10,8 +10,7 @@ FROM debian:bookworm-slim AS node
 COPY --from=build /code/node /bin/
 COPY ./configs/cardano /opt/cardano/config
 ENV CARDANO_CONFIG=/opt/cardano/config/preview/config.json
-# Create data dir owned by container user and use it as default dir
-VOLUME /data
-WORKDIR /data
-ENV CARDANO_DATABASE_PATH=/data
+# Create database dir owned by container user
+VOLUME /data/db
+ENV CARDANO_DATABASE_PATH=/data/db
 ENTRYPOINT ["node"]
