@@ -439,8 +439,6 @@ func (ls *LedgerState) removeBlock(
 }
 
 func (ls *LedgerState) GetBlock(point ocommon.Point) (*models.Block, error) {
-	ls.RLock()
-	defer ls.RUnlock()
 	ret, err := models.BlockByPoint(ls.db, point)
 	if err != nil {
 		return nil, err
@@ -451,8 +449,6 @@ func (ls *LedgerState) GetBlock(point ocommon.Point) (*models.Block, error) {
 // RecentChainPoints returns the requested count of recent chain points in descending order. This is used mostly
 // for building a set of intersect points when acting as a chainsync client
 func (ls *LedgerState) RecentChainPoints(count int) ([]ocommon.Point, error) {
-	ls.RLock()
-	defer ls.RUnlock()
 	var tmpBlocks []models.Block
 	result := ls.db.Metadata().
 		Order("number DESC").
@@ -475,37 +471,38 @@ func (ls *LedgerState) RecentChainPoints(count int) ([]ocommon.Point, error) {
 func (ls *LedgerState) GetIntersectPoint(
 	points []ocommon.Point,
 ) (*ocommon.Point, error) {
-	// Try to acquire a read lock if we can, but skip if we can't. This avoids a deadlock if
-	// our caller also holds the read lock and another routine tries to acquire a write lock
-	// TODO: figure out something better for handling this
-	if ls.TryRLock() {
-		defer ls.RUnlock()
-	}
 	tip, err := ls.Tip()
 	if err != nil {
 		return nil, err
 	}
 	var ret ocommon.Point
-	for _, point := range points {
-		// Ignore points with a slot later than our current tip
-		if point.Slot > tip.Point.Slot {
-			continue
-		}
-		// Ignore points with a slot earlier than an existing match
-		if point.Slot < ret.Slot {
-			continue
-		}
-		// Lookup block in metadata DB
-		tmpBlock, err := models.BlockByPoint(ls.db, point)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
+	txn := ls.db.Transaction(false)
+	err = txn.Do(func(txn *database.Txn) error {
+		for _, point := range points {
+			// Ignore points with a slot later than our current tip
+			if point.Slot > tip.Point.Slot {
 				continue
 			}
-			return nil, err
+			// Ignore points with a slot earlier than an existing match
+			if point.Slot < ret.Slot {
+				continue
+			}
+			// Lookup block in metadata DB
+			tmpBlock, err := models.BlockByPoint(ls.db, point)
+			if err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					continue
+				}
+				return err
+			}
+			// Update return value
+			ret.Slot = tmpBlock.Slot
+			ret.Hash = tmpBlock.Hash
 		}
-		// Update return value
-		ret.Slot = tmpBlock.Slot
-		ret.Hash = tmpBlock.Hash
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	if ret.Slot > 0 {
 		return &ret, nil
@@ -549,8 +546,6 @@ func (ls *LedgerState) UtxoByRef(
 	txId []byte,
 	outputIdx uint32,
 ) (models.Utxo, error) {
-	ls.RLock()
-	defer ls.RUnlock()
 	return models.UtxoByRef(ls.db, txId, outputIdx)
 }
 
@@ -558,7 +553,5 @@ func (ls *LedgerState) UtxoByRef(
 func (ls *LedgerState) UtxosByAddress(
 	addr ledger.Address,
 ) ([]models.Utxo, error) {
-	ls.RLock()
-	defer ls.RUnlock()
 	return models.UtxosByAddress(ls.db, addr)
 }
