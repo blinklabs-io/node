@@ -31,7 +31,9 @@ const (
 )
 
 func slogPrintf(format string, v ...any) {
-	slog.Info(fmt.Sprintf(format, v...))
+	slog.Info(fmt.Sprintf(format, v...),
+		"component", programName,
+	)
 }
 
 func main() {
@@ -49,12 +51,15 @@ func main() {
 			}
 			// Configure logger
 			logLevel := slog.LevelInfo
+			addSource := false
 			if globalFlags.debug {
 				logLevel = slog.LevelDebug
+				// addSource = true
 			}
 			logger := slog.New(
 				slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-					Level: logLevel,
+					AddSource: addSource,
+					Level:     logLevel,
 				}),
 			)
 			slog.SetDefault(logger)
@@ -68,10 +73,10 @@ func main() {
 			// Run node
 			logger.Info(
 				fmt.Sprintf(
-					"running: %s version %s",
-					programName,
+					"version: %s",
 					version.GetVersionString(),
 				),
+				"component", programName,
 			)
 			if err := node.Run(logger); err != nil {
 				slog.Error(err.Error())

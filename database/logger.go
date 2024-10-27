@@ -37,23 +37,27 @@ func NewBadgerLogger(logger *slog.Logger) *BadgerLogger {
 func (b *BadgerLogger) Infof(msg string, args ...any) {
 	b.logger.Info(
 		fmt.Sprintf(msg, args...),
+		"component", "database",
 	)
 }
 
 func (b *BadgerLogger) Warningf(msg string, args ...any) {
 	b.logger.Warn(
 		fmt.Sprintf(msg, args...),
+		"component", "database",
 	)
 }
 
 func (b *BadgerLogger) Debugf(msg string, args ...any) {
 	b.logger.Debug(
 		fmt.Sprintf(msg, args...),
+		"component", "database",
 	)
 }
 
 func (b *BadgerLogger) Errorf(msg string, args ...any) {
 	b.logger.Error(
 		fmt.Sprintf(msg, args...),
+		"component", "database",
 	)
 }

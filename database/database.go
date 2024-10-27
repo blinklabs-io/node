@@ -94,6 +94,7 @@ func (b *BaseDatabase) blobGc() {
 			if !errors.Is(err, badger.ErrNoRewrite) {
 				b.logger.Warn(
 					fmt.Sprintf("blob DB: GC failure: %s", err),
+					"component", "database",
 				)
 			}
 		} else {

@@ -106,10 +106,13 @@ func (c *ConnectionManager) AddHost(
 		Tags:    tmpTags,
 	}
 	if c.config.Logger != nil {
-		c.config.Logger.Debug(fmt.Sprintf(
-			"connmanager: adding host: %+v",
-			cmHost,
-		))
+		c.config.Logger.Debug(
+			fmt.Sprintf(
+				"connmanager: adding host: %+v",
+				cmHost,
+			),
+			"component", "connmanager",
+		)
 	}
 	c.hosts = append(
 		c.hosts,

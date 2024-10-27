@@ -25,7 +25,7 @@ import (
 
 type Config struct {
 	BindAddr      string `split_words:"true"`
-	CardanoConfig string `envconfig:"config"`
+	CardanoConfig string `                   envconfig:"config"`
 	DatabasePath  string `split_words:"true"`
 	IntersectTip  bool   `split_words:"true"`
 	Network       string
@@ -71,7 +71,10 @@ func LoadTopologyConfig() (*topology.TopologyConfig, error) {
 			return nil, fmt.Errorf("unknown network: %s", globalConfig.Network)
 		}
 		if len(network.BootstrapPeers) == 0 {
-			return nil, fmt.Errorf("no known bootstrap peers for network %s", globalConfig.Network)
+			return nil, fmt.Errorf(
+				"no known bootstrap peers for network %s",
+				globalConfig.Network,
+			)
 		}
 		for _, peer := range network.BootstrapPeers {
 			globalTopologyConfig.BootstrapPeers = append(

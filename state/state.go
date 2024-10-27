@@ -111,7 +111,9 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 			tip, err := ls.Tip()
 			if err != nil {
 				ls.logger.Error(
-					fmt.Sprintf("ledger: failed to get tip: %s", err),
+					"failed to get tip",
+					"component", "ledger",
+					"error", err,
 				)
 				return
 			}
@@ -137,18 +139,20 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 						return nil
 					}
 					// Delete the UTxOs
-					for _, utxo := range tmpUtxos {
-						if err := models.UtxoDeleteTxn(txn, utxo); err != nil {
-							return fmt.Errorf(
-								"failed to remove consumed UTxO: %w",
-								err,
-							)
-						}
+					if err := models.UtxosDeleteTxn(txn, tmpUtxos); err != nil {
+						return fmt.Errorf(
+							"failed to remove consumed UTxO: %w",
+							err,
+						)
 					}
 					return nil
 				})
 				if err != nil {
-					ls.logger.Error(fmt.Sprintf("ledger: %s", err))
+					ls.logger.Error(
+						"failed to update utxos",
+						"component", "ledger",
+						"error", err,
+					)
 					return
 				}
 				if batchDone {
@@ -167,7 +171,9 @@ func (ls *LedgerState) handleEventChainSync(evt event.Event) {
 		if err := ls.handleEventChainSyncRollback(e); err != nil {
 			// TODO: actually handle this error
 			ls.logger.Error(
-				fmt.Sprintf("ledger: failed to handle rollback: %s", err),
+				"failed to handle rollback",
+				"component", "ledger",
+				"error", err,
 			)
 			return
 		}
@@ -175,7 +181,9 @@ func (ls *LedgerState) handleEventChainSync(evt event.Event) {
 		if err := ls.handleEventChainSyncBlock(e); err != nil {
 			// TODO: actually handle this error
 			ls.logger.Error(
-				fmt.Sprintf("ledger: failed to handle block: %s", err),
+				"failed to handle block",
+				"component", "ledger",
+				"error", err,
 			)
 			return
 		}
@@ -209,10 +217,8 @@ func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
 		if result.Error != nil {
 			return fmt.Errorf("remove rolled-backup UTxOs: %w", result.Error)
 		}
-		for _, utxo := range tmpUtxos {
-			if err := models.UtxoDeleteTxn(txn, utxo); err != nil {
-				return fmt.Errorf("remove rolled-back UTxO: %w", err)
-			}
+		if err := models.UtxosDeleteTxn(txn, tmpUtxos); err != nil {
+			return fmt.Errorf("remove rolled-back UTxOs: %w", err)
 		}
 		// Restore spent UTxOs
 		result = txn.Metadata().
@@ -240,11 +246,15 @@ func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
 			},
 		),
 	)
-	ls.logger.Info(fmt.Sprintf(
-		"ledger: chain rolled back, new tip: %x at slot %d",
-		e.Point.Hash,
-		e.Point.Slot,
-	))
+	ls.logger.Info(
+		fmt.Sprintf(
+			"chain rolled back, new tip: %x at slot %d",
+			e.Point.Hash,
+			e.Point.Slot,
+		),
+		"component",
+		"ledger",
+	)
 	return nil
 }
 
@@ -280,14 +290,22 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 			if result := txn.Metadata().Create(&latestEpoch); result.Error != nil {
 				return result.Error
 			}
-			ls.logger.Debug("ledger: added initial epoch to DB", "epoch", fmt.Sprintf("%#v", latestEpoch))
+			ls.logger.Debug(
+				"added initial epoch to DB",
+				"epoch", fmt.Sprintf("%+v", latestEpoch),
+				"component", "ledger",
+			)
 		}
-		if e.Point.Slot > latestEpoch.StartSlot+uint64(latestEpoch.LengthInSlots) {
+		if e.Point.Slot > latestEpoch.StartSlot+uint64(
+			latestEpoch.LengthInSlots,
+		) {
 			// Create next epoch record
 			newEpoch := models.Epoch{
-				EpochId:   latestEpoch.EpochId + 1,
-				EraId:     ls.currentEra,
-				StartSlot: latestEpoch.StartSlot + uint64(latestEpoch.LengthInSlots),
+				EpochId: latestEpoch.EpochId + 1,
+				EraId:   ls.currentEra,
+				StartSlot: latestEpoch.StartSlot + uint64(
+					latestEpoch.LengthInSlots,
+				),
 			}
 			// TODO: replace with protocol param lookups
 			if ls.currentEra == byron.EraIdByron {
@@ -300,7 +318,11 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 			if result := txn.Metadata().Create(&newEpoch); result.Error != nil {
 				return result.Error
 			}
-			ls.logger.Debug("ledger: added next epoch to DB", "epoch", fmt.Sprintf("%#v", newEpoch))
+			ls.logger.Debug(
+				"added next epoch to DB",
+				"epoch", fmt.Sprintf("%+v", newEpoch),
+				"component", "ledger",
+			)
 		}
 		// Add block to database
 		if err := ls.addBlock(txn, tmpBlock); err != nil {
@@ -361,11 +383,15 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 			},
 		),
 	)
-	ls.logger.Info(fmt.Sprintf(
-		"ledger: chain extended, new tip: %s at slot %d",
-		e.Block.Hash(),
-		e.Block.SlotNumber(),
-	))
+	ls.logger.Info(
+		fmt.Sprintf(
+			"chain extended, new tip: %s at slot %d",
+			e.Block.Hash(),
+			e.Block.SlotNumber(),
+		),
+		"component",
+		"ledger",
+	)
 	return nil
 }
 
