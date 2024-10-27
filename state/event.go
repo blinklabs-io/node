@@ -15,6 +15,7 @@
 package state
 
 import (
+	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/ledger"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 	"github.com/blinklabs-io/node/event"
@@ -42,9 +43,11 @@ const (
 // ChainsyncEvent represents either a RollForward or RollBackward chainsync event.
 // We use a single event type for both to make synchronization easier.
 type ChainsyncEvent struct {
-	Point       ocommon.Point
-	BlockNumber uint64
-	Block       ledger.Block
-	Type        uint
-	Rollback    bool
+	ConnectionId ouroboros.ConnectionId
+	Point        ocommon.Point
+	BlockNumber  uint64
+	Block        ledger.Block
+	BlockHeader  ledger.BlockHeader
+	Type         uint
+	Rollback     bool
 }
