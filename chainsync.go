@@ -18,8 +18,10 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	ouroboros "github.com/blinklabs-io/gouroboros"
+	"github.com/blinklabs-io/node/event"
+	"github.com/blinklabs-io/node/state"
 
+	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/ledger"
 	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
@@ -222,13 +224,27 @@ func (n *Node) chainsyncClientRollForward(
 	case ledger.Block:
 		blk = v
 	case ledger.BlockHeader:
+		blockSlot := v.SlotNumber()
+		blockHash, _ := hex.DecodeString(v.Hash())
+		// Publish event
+		n.eventBus.Publish(
+			state.ChainsyncEventType,
+			event.NewEvent(
+				state.ChainsyncEventType,
+				state.ChainsyncEvent{
+					ConnectionId: ctx.ConnectionId,
+					Point:        ocommon.NewPoint(blockSlot, blockHash),
+					Type:         blockType,
+					BlockHeader:  v,
+				},
+			),
+		)
+		// Fetch block content via block-fetch
 		conn := n.connManager.GetConnectionById(ctx.ConnectionId)
 		if conn == nil {
 			return fmt.Errorf("failed to lookup connection ID: %s", ctx.ConnectionId.String())
 		}
 		oConn := conn.Conn
-		blockSlot := v.SlotNumber()
-		blockHash, _ := hex.DecodeString(v.Hash())
 		tmpBlock, err := oConn.BlockFetch().Client.GetBlock(ocommon.Point{Slot: blockSlot, Hash: blockHash})
 		if err != nil {
 			return err

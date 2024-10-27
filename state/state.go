@@ -171,11 +171,19 @@ func (ls *LedgerState) handleEventChainSync(evt event.Event) {
 			)
 			return
 		}
-	} else {
+	} else if e.Block != nil {
 		if err := ls.handleEventChainSyncBlock(e); err != nil {
 			// TODO: actually handle this error
 			ls.logger.Error(
 				fmt.Sprintf("ledger: failed to handle block: %s", err),
+			)
+			return
+		}
+	} else if e.BlockHeader != nil {
+		if err := ls.handleEventChainSyncBlockHeader(e); err != nil {
+			// TODO: actually handle this error
+			ls.logger.Error(
+				fmt.Sprintf("ledger: failed to handle block header: %s", err),
 			)
 			return
 		}
@@ -245,6 +253,11 @@ func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
 		e.Point.Hash,
 		e.Point.Slot,
 	))
+	return nil
+}
+
+func (ls *LedgerState) handleEventChainSyncBlockHeader(e ChainsyncEvent) error {
+	// TODO
 	return nil
 }
 
