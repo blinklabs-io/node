@@ -112,6 +112,7 @@ func (n *Node) startListener(l ListenerConfig) error {
 			if err != nil {
 				n.config.logger.Error(
 					fmt.Sprintf("listener: accept failed: %s", err),
+					"component", "network",
 				)
 				continue
 			}
@@ -120,6 +121,7 @@ func (n *Node) startListener(l ListenerConfig) error {
 					"listener: accepted connection from %s",
 					conn.RemoteAddr(),
 				),
+				"component", "network",
 			)
 			// Setup Ouroboros connection
 			connOpts := append(
@@ -133,6 +135,7 @@ func (n *Node) startListener(l ListenerConfig) error {
 						"listener: failed to setup connection: %s",
 						err,
 					),
+					"component", "network",
 				)
 				continue
 			}

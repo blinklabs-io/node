@@ -35,9 +35,10 @@ func Run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	logger.Debug(fmt.Sprintf("config: %+v", cfg))
+	logger.Debug(fmt.Sprintf("config: %+v", cfg), "component", "node")
 	logger.Debug(
 		fmt.Sprintf("topology: %+v", config.GetTopologyConfig()),
+		"component", "node",
 	)
 	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port))
 	if err != nil {
@@ -52,16 +53,18 @@ func Run(logger *slog.Logger) error {
 		nodeCfg = tmpCfg
 		logger.Debug(
 			fmt.Sprintf(
-				"node: cardano node config: %+v",
+				"cardano network config: %+v",
 				nodeCfg,
 			),
+			"component", "node",
 		)
 	}
 	logger.Info(
 		fmt.Sprintf(
-			"node: listening for ouroboros node-to-node connections on %s",
+			"listening for ouroboros node-to-node connections on %s",
 			fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port),
 		),
+		"component", "node",
 	)
 	n, err := node.New(
 		node.NewConfig(
@@ -89,14 +92,16 @@ func Run(logger *slog.Logger) error {
 	http.Handle("/metrics", promhttp.Handler())
 	logger.Info(
 		fmt.Sprintf(
-			"node: serving prometheus metrics on %s",
+			"serving prometheus metrics on %s",
 			fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.MetricsPort),
 		),
+		"component", "node",
 	)
 	go func() {
 		if err := http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.MetricsPort), nil); err != nil {
 			logger.Error(
-				fmt.Sprintf("node: failed to start metrics listener: %s", err),
+				fmt.Sprintf("failed to start metrics listener: %s", err),
+				"component", "node",
 			)
 			os.Exit(1)
 		}

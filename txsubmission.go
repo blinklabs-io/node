@@ -17,7 +17,6 @@ package node
 import (
 	"encoding/hex"
 	"fmt"
-	"log/slog"
 	"time"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
@@ -71,9 +70,13 @@ func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
 			if err != nil {
 				n.config.logger.Error(
 					fmt.Sprintf(
-						"txsubmission: failed to request TxIds: %s",
+						"failed to get TxIds: %s",
 						err,
 					),
+					"component", "network",
+					"protocol", "tx-submission",
+					"role", "server",
+					"connection_id", ctx.ConnectionId.String(),
 				)
 				return
 			}
@@ -88,9 +91,13 @@ func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
 				if err != nil {
 					n.config.logger.Error(
 						fmt.Sprintf(
-							"txsubmission: failed to request Txs: %s",
+							"failed to get Txs: %s",
 							err,
 						),
+						"component", "network",
+						"protocol", "tx-submission",
+						"role", "server",
+						"connection_id", ctx.ConnectionId.String(),
 					)
 					return
 				}
@@ -103,16 +110,22 @@ func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
 					if err != nil {
 						n.config.logger.Error(
 							fmt.Sprintf(
-								"txsubmission: failed to parse transaction CBOR: %s",
+								"failed to parse transaction CBOR: %s",
 								err,
 							),
+							"component", "network",
+							"protocol", "tx-submission",
+							"role", "server",
+							"connection_id", ctx.ConnectionId.String(),
 						)
 						return
 					}
 					n.config.logger.Debug(
-						"txsubmission: received tx",
-						slog.String("tx_hash", tx.Hash()),
-						slog.String("connection_id", ctx.ConnectionId.String()),
+						"received tx",
+						"tx_hash", tx.Hash(),
+						"protocol", "tx-submission",
+						"role", "server",
+						"connection_id", ctx.ConnectionId.String(),
 					)
 					// Add transaction to mempool
 					err = n.mempool.AddTransaction(
@@ -126,10 +139,14 @@ func (n *Node) txsubmissionServerInit(ctx otxsubmission.CallbackContext) error {
 					if err != nil {
 						n.config.logger.Error(
 							fmt.Sprintf(
-								"txsubmission: failed to add tx %s to mempool: %s",
+								"failed to add tx %x to mempool: %s",
 								tx.Hash(),
 								err,
 							),
+							"component", "network",
+							"protocol", "tx-submission",
+							"role", "server",
+							"connection_id", ctx.ConnectionId.String(),
 						)
 						return
 					}

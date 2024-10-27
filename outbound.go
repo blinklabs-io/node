@@ -43,15 +43,21 @@ type outboundPeer struct {
 }
 
 func (n *Node) startOutboundConnections() {
-	n.config.logger.Debug("outbound: starting connections")
+	n.config.logger.Debug(
+		"starting connections",
+		"component", "network",
+		"role", "client",
+	)
 	var tmpHosts []string
 	for _, host := range n.config.topologyConfig.Producers {
 		n.config.logger.Debug(
 			fmt.Sprintf(
-				"outbound: adding legacy topology host: %s:%d",
+				"adding legacy topology host: %s:%d",
 				host.Address,
 				host.Port,
 			),
+			"component", "network",
+			"role", "client",
 		)
 		tmpHosts = append(
 			tmpHosts,
@@ -61,10 +67,12 @@ func (n *Node) startOutboundConnections() {
 	for _, host := range n.config.topologyConfig.BootstrapPeers {
 		n.config.logger.Debug(
 			fmt.Sprintf(
-				"outbound: adding bootstrap peer topology host: %s:%d",
+				"adding bootstrap peer topology host: %s:%d",
 				host.Address,
 				host.Port,
 			),
+			"component", "network",
+			"role", "client",
 		)
 		tmpHosts = append(
 			tmpHosts,
@@ -75,10 +83,12 @@ func (n *Node) startOutboundConnections() {
 		for _, host := range localRoot.AccessPoints {
 			n.config.logger.Debug(
 				fmt.Sprintf(
-					"outbound: adding localRoot topology host: %s:%d",
+					"adding localRoot topology host: %s:%d",
 					host.Address,
 					host.Port,
 				),
+				"component", "network",
+				"role", "client",
 			)
 			tmpHosts = append(
 				tmpHosts,
@@ -90,10 +100,12 @@ func (n *Node) startOutboundConnections() {
 		for _, host := range publicRoot.AccessPoints {
 			n.config.logger.Debug(
 				fmt.Sprintf(
-					"outbound: adding publicRoot topology host: %s:%d",
+					"adding publicRoot topology host: %s:%d",
 					host.Address,
 					host.Port,
 				),
+				"component", "network",
+				"role", "client",
 			)
 			tmpHosts = append(
 				tmpHosts,
@@ -112,6 +124,7 @@ func (n *Node) startOutboundConnections() {
 						peer.Address,
 						err,
 					),
+					"component", "network",
 				)
 				go n.reconnectOutboundConnection(peer)
 			}
@@ -144,9 +157,11 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 	}
 	n.config.logger.Debug(
 		fmt.Sprintf(
-			"outbound: establishing TCP connection to: %s",
+			"establishing TCP connection to: %s",
 			peer.Address,
 		),
+		"component", "network",
+		"role", "client",
 	)
 	tmpConn, err := dialer.Dial("tcp", peer.Address)
 	if err != nil {
@@ -197,9 +212,11 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 	// Setup Ouroboros connection
 	n.config.logger.Debug(
 		fmt.Sprintf(
-			"outbound: establishing ouroboros protocol to %s",
+			"establishing ouroboros protocol to %s",
 			peer.Address,
 		),
+		"component", "network",
+		"role", "client",
 	)
 	oConn, err := ouroboros.NewConnection(
 		connOpts...,
@@ -208,7 +225,15 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 		return err
 	}
 	n.config.logger.Info(
-		fmt.Sprintf("outbound: connected ouroboros to %s", peer.Address),
+		fmt.Sprintf("connected ouroboros to %s", peer.Address),
+		"component", "network",
+		"role", "client",
+	)
+	n.config.logger.Debug(
+		fmt.Sprintf("peer address mapping: address: %s", peer.Address),
+		"component", "network",
+		"role", "client",
+		"connection_id", oConn.Id().String(),
 	)
 	peer.ReconnectCount = 0
 	// Add to connection manager
@@ -250,6 +275,7 @@ func (n *Node) reconnectOutboundConnection(peer outboundPeer) {
 				peer.ReconnectCount,
 				peer.Address,
 			),
+			"component", "network",
 		)
 		time.Sleep(peer.ReconnectDelay)
 		if err := n.createOutboundConnection(peer); err != nil {
@@ -259,6 +285,7 @@ func (n *Node) reconnectOutboundConnection(peer outboundPeer) {
 					peer.Address,
 					err,
 				),
+				"component", "network",
 			)
 			continue
 		}

@@ -132,13 +132,17 @@ func (n *Node) connectionManagerConnClosed(
 	if err != nil {
 		n.config.logger.Error(
 			fmt.Sprintf(
-				"node: unexpected connection failure: %s: %s",
-				connId.String(),
+				"unexpected connection failure: %s",
 				err,
 			),
+			"component", "network",
+			"connection_id", connId.String(),
 		)
 	} else {
-		n.config.logger.Info(fmt.Sprintf("node: connection closed: %s", connId.String()))
+		n.config.logger.Info("connection closed",
+			"component", "network",
+			"connection_id", connId.String(),
+		)
 	}
 	conn := n.connManager.GetConnectionById(connId)
 	if conn == nil {

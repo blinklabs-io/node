@@ -159,6 +159,22 @@ func UtxoDeleteTxn(txn *database.Txn, utxo Utxo) error {
 	return nil
 }
 
+func UtxosDeleteTxn(txn *database.Txn, utxos []Utxo) error {
+	// Remove from metadata DB
+	if result := txn.Metadata().Delete(&utxos); result.Error != nil {
+		return result.Error
+	}
+	// Remove from blob DB
+	for _, utxo := range utxos {
+		key := UtxoBlobKey(utxo.TxId, utxo.OutputIdx)
+		err := txn.Blob().Delete(key)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 /*
 func UtxoDeleteByRef(db database.Database, txId []byte, outputIdx uint32) error {
 	utxo, err := UtxoByRef(db, txId, outputIdx)
