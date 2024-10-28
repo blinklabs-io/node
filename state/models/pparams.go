@@ -14,12 +14,14 @@
 
 package models
 
-// MigrateModels contains a list of model objects that should have DB migrations applied
-var MigrateModels = []any{
-	&Block{},
-	&Epoch{},
-	&Era{},
-	&PParams{},
-	&PParamUpdate{},
-	&Utxo{},
+type PParams struct {
+	ID        uint `gorm:"primarykey"`
+	AddedSlot uint64
+	Epoch     uint
+	EraId     uint
+	Cbor      []byte
+}
+
+func (PParams) TableName() string {
+	return "pparams"
 }

@@ -22,15 +22,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/blinklabs-io/node/config/cardano"
 	"github.com/blinklabs-io/node/database"
 	"github.com/blinklabs-io/node/event"
+	"github.com/blinklabs-io/node/state/eras"
 	"github.com/blinklabs-io/node/state/models"
-	"gorm.io/gorm"
 
+	"github.com/blinklabs-io/gouroboros/cbor"
 	"github.com/blinklabs-io/gouroboros/ledger"
 	"github.com/blinklabs-io/gouroboros/ledger/byron"
 	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
+	"gorm.io/gorm"
 )
 
 const (
@@ -38,40 +41,40 @@ const (
 	cleanupConsumedUtxosSlotWindow = 50000 // TODO: calculate this from params
 )
 
-type LedgerState struct {
-	sync.RWMutex
-	logger                    *slog.Logger
-	dataDir                   string
-	db                        database.Database
-	eventBus                  *event.EventBus
-	timerCleanupConsumedUtxos *time.Timer
-	// TODO: move this into the DB
-	currentEra uint8
+type LedgerStateConfig struct {
+	Logger            *slog.Logger
+	DataDir           string
+	EventBus          *event.EventBus
+	CardanoNodeConfig *cardano.CardanoNodeConfig
 }
 
-func NewLedgerState(
-	dataDir string,
-	eventBus *event.EventBus,
-	logger *slog.Logger,
-) (*LedgerState, error) {
+type LedgerState struct {
+	sync.RWMutex
+	config                    LedgerStateConfig
+	db                        database.Database
+	timerCleanupConsumedUtxos *time.Timer
+	currentPParams            any
+	currentEpoch              models.Epoch
+	currentEraId              uint8
+}
+
+func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
 	ls := &LedgerState{
-		dataDir:  dataDir,
-		logger:   logger,
-		eventBus: eventBus,
+		config: cfg,
 	}
-	if logger == nil {
+	if cfg.Logger == nil {
 		// Create logger to throw away logs
 		// We do this so we don't have to add guards around every log operation
-		ls.logger = slog.New(slog.NewJSONHandler(io.Discard, nil))
+		cfg.Logger = slog.New(slog.NewJSONHandler(io.Discard, nil))
 	}
-	if dataDir == "" {
-		db, err := database.NewInMemory(ls.logger)
+	if cfg.DataDir == "" {
+		db, err := database.NewInMemory(ls.config.Logger)
 		if err != nil {
 			return nil, err
 		}
 		ls.db = db
 	} else {
-		db, err := database.NewPersistent(dataDir, ls.logger)
+		db, err := database.NewPersistent(cfg.DataDir, cfg.Logger)
 		if err != nil {
 			return nil, err
 		}
@@ -84,10 +87,22 @@ func NewLedgerState(
 		}
 	}
 	// Setup event handlers
-	ls.eventBus.SubscribeFunc(ChainsyncEventType, ls.handleEventChainSync)
+	ls.config.EventBus.SubscribeFunc(ChainsyncEventType, ls.handleEventChainSync)
 	// Schedule periodic process to purge consumed UTxOs outside of the rollback window
 	ls.scheduleCleanupConsumedUtxos()
 	// TODO: schedule process to scan/clean blob DB for keys that don't have a corresponding metadata DB entry
+	// Load current era from DB
+	if err := ls.loadEra(); err != nil {
+		return nil, err
+	}
+	// Load current epoch from DB
+	if err := ls.loadEpoch(); err != nil {
+		return nil, err
+	}
+	// Load current protocol parameters from DB
+	if err := ls.loadPParams(); err != nil {
+		return nil, err
+	}
 	return ls, nil
 }
 
@@ -110,7 +125,7 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 			// Get the current tip, since we're querying by slot
 			tip, err := ls.Tip()
 			if err != nil {
-				ls.logger.Error(
+				ls.config.Logger.Error(
 					"failed to get tip",
 					"component", "ledger",
 					"error", err,
@@ -148,7 +163,7 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 					return nil
 				})
 				if err != nil {
-					ls.logger.Error(
+					ls.config.Logger.Error(
 						"failed to update utxos",
 						"component", "ledger",
 						"error", err,
@@ -170,7 +185,7 @@ func (ls *LedgerState) handleEventChainSync(evt event.Event) {
 	if e.Rollback {
 		if err := ls.handleEventChainSyncRollback(e); err != nil {
 			// TODO: actually handle this error
-			ls.logger.Error(
+			ls.config.Logger.Error(
 				"failed to handle rollback",
 				"component", "ledger",
 				"error", err,
@@ -180,7 +195,7 @@ func (ls *LedgerState) handleEventChainSync(evt event.Event) {
 	} else if e.Block != nil {
 		if err := ls.handleEventChainSyncBlock(e); err != nil {
 			// TODO: actually handle this error
-			ls.logger.Error(
+			ls.config.Logger.Error(
 				"failed to handle block",
 				"component", "ledger",
 				"error", err,
@@ -190,7 +205,7 @@ func (ls *LedgerState) handleEventChainSync(evt event.Event) {
 	} else if e.BlockHeader != nil {
 		if err := ls.handleEventChainSyncBlockHeader(e); err != nil {
 			// TODO: actually handle this error
-			ls.logger.Error(
+			ls.config.Logger.Error(
 				fmt.Sprintf("ledger: failed to handle block header: %s", err),
 			)
 			return
@@ -245,7 +260,7 @@ func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
 		return err
 	}
 	// Generate event
-	ls.eventBus.Publish(
+	ls.config.EventBus.Publish(
 		ChainRollbackEventType,
 		event.NewEvent(
 			ChainRollbackEventType,
@@ -254,7 +269,7 @@ func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
 			},
 		),
 	)
-	ls.logger.Info(
+	ls.config.Logger.Info(
 		fmt.Sprintf(
 			"chain rolled back, new tip: %x at slot %d",
 			e.Point.Hash,
@@ -281,47 +296,43 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 		Type:   e.Type,
 		Cbor:   e.Block.Cbor(),
 	}
-	// TODO: track this using protocol params and hard forks
-	ls.currentEra = e.Block.Era().Id
 	// Start a transaction
 	txn := ls.db.Transaction(true)
 	err := txn.Do(func(txn *database.Txn) error {
+		// TODO: move this somewhere else
 		// Check for epoch change
-		latestEpoch, err := models.EpochLatestTxn(txn)
-		if err != nil {
-			if err != gorm.ErrRecordNotFound {
-				return err
-			}
+		if ls.currentEpoch.ID == 0 {
 			// Create initial epoch
-			latestEpoch = models.Epoch{
+			newEpoch := models.Epoch{
 				EpochId:             0,
-				EraId:               ls.currentEra,
+				EraId:               ls.currentEraId,
 				StartSlot:           0,
 				SlotLengthInSeconds: 20,
 				LengthInSlots:       21600,
 			}
-			if result := txn.Metadata().Create(&latestEpoch); result.Error != nil {
+			if result := txn.Metadata().Create(&newEpoch); result.Error != nil {
 				return result.Error
 			}
-			ls.logger.Debug(
+			ls.currentEpoch = newEpoch
+			ls.config.Logger.Debug(
 				"added initial epoch to DB",
-				"epoch", fmt.Sprintf("%+v", latestEpoch),
+				"epoch", fmt.Sprintf("%+v", newEpoch),
 				"component", "ledger",
 			)
 		}
-		if e.Point.Slot > latestEpoch.StartSlot+uint64(
-			latestEpoch.LengthInSlots,
+		if e.Point.Slot > ls.currentEpoch.StartSlot+uint64(
+			ls.currentEpoch.LengthInSlots,
 		) {
 			// Create next epoch record
 			newEpoch := models.Epoch{
-				EpochId: latestEpoch.EpochId + 1,
-				EraId:   ls.currentEra,
-				StartSlot: latestEpoch.StartSlot + uint64(
-					latestEpoch.LengthInSlots,
+				EpochId: ls.currentEpoch.EpochId + 1,
+				EraId:   e.Block.Era().Id,
+				StartSlot: ls.currentEpoch.StartSlot + uint64(
+					ls.currentEpoch.LengthInSlots,
 				),
 			}
 			// TODO: replace with protocol param lookups
-			if ls.currentEra == byron.EraIdByron {
+			if ls.currentEraId == byron.EraIdByron {
 				newEpoch.SlotLengthInSeconds = 20
 				newEpoch.LengthInSlots = 21600
 			} else {
@@ -331,11 +342,59 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 			if result := txn.Metadata().Create(&newEpoch); result.Error != nil {
 				return result.Error
 			}
-			ls.logger.Debug(
+			ls.currentEpoch = newEpoch
+			ls.config.Logger.Debug(
 				"added next epoch to DB",
 				"epoch", fmt.Sprintf("%+v", newEpoch),
 				"component", "ledger",
 			)
+		}
+		// TODO: move this somewhere else
+		// TODO: track this using protocol params and hard forks
+		// Check for era rollover
+		if e.Block.Era().Id != ls.currentEraId {
+			targetEraId := e.Block.Era().Id
+			// Transition through every era between the current and the target era
+			for nextEraId := ls.currentEraId + 1; nextEraId <= targetEraId; nextEraId++ {
+				nextEra := eras.Eras[nextEraId]
+				if nextEra.HardForkFunc != nil {
+					// Perform hard fork
+					// This generally means upgrading pparams from previous era
+					newPParams, err := nextEra.HardForkFunc(ls.config.CardanoNodeConfig, ls.currentPParams)
+					if err != nil {
+						return err
+					}
+					ls.currentPParams = newPParams
+					ls.config.Logger.Debug(
+						"updated protocol params",
+						"pparams",
+						fmt.Sprintf("%#v", ls.currentPParams),
+					)
+					// Write pparams update to DB
+					pparamsCbor, err := cbor.Encode(&ls.currentPParams)
+					if err != nil {
+						return err
+					}
+					tmpPParams := models.PParams{
+						AddedSlot: e.Point.Slot,
+						Epoch:     ls.currentEpoch.EpochId,
+						EraId:     uint(nextEraId),
+						Cbor:      pparamsCbor,
+					}
+					if result := txn.Metadata().Create(&tmpPParams); result.Error != nil {
+						return result.Error
+					}
+				}
+				ls.currentEraId = nextEraId
+				// Add entry for era to DB
+				tmpEra := models.Era{
+					EraId:      uint(nextEraId),
+					StartEpoch: ls.currentEpoch.EpochId,
+				}
+				if result := txn.Metadata().Create(&tmpEra); result.Error != nil {
+					return result.Error
+				}
+			}
 		}
 		// Add block to database
 		if err := ls.addBlock(txn, tmpBlock); err != nil {
@@ -386,7 +445,7 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 		return err
 	}
 	// Generate event
-	ls.eventBus.Publish(
+	ls.config.EventBus.Publish(
 		ChainBlockEventType,
 		event.NewEvent(
 			ChainBlockEventType,
@@ -396,7 +455,7 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 			},
 		),
 	)
-	ls.logger.Info(
+	ls.config.Logger.Info(
 		fmt.Sprintf(
 			"chain extended, new tip: %s at slot %d",
 			e.Block.Hash(),
@@ -474,6 +533,47 @@ func (ls *LedgerState) removeBlock(
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (ls *LedgerState) loadPParams() error {
+	var tmpPParams models.PParams
+	result := ls.db.Metadata().Order("id DESC").First(&tmpPParams)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil
+		}
+		return result.Error
+	}
+	currentPParams, err := eras.Eras[ls.currentEraId].DecodePParamsFunc(tmpPParams.Cbor)
+	if err != nil {
+		return err
+	}
+	ls.currentPParams = currentPParams
+	return nil
+}
+
+func (ls *LedgerState) loadEpoch() error {
+	tmpEpoch, err := models.EpochLatest(ls.db)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil
+		}
+		return err
+	}
+	ls.currentEpoch = tmpEpoch
+	return nil
+}
+
+func (ls *LedgerState) loadEra() error {
+	tmpEra, err := models.EraLatest(ls.db)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil
+		}
+		return err
+	}
+	ls.currentEraId = uint8(tmpEra.EraId)
 	return nil
 }
 

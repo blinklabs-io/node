@@ -73,9 +73,12 @@ func (n *Node) Run() error {
 	}
 	// Load state
 	state, err := state.NewLedgerState(
-		n.config.dataDir,
-		n.eventBus,
-		n.config.logger,
+		state.LedgerStateConfig{
+			DataDir:           n.config.dataDir,
+			EventBus:          n.eventBus,
+			Logger:            n.config.logger,
+			CardanoNodeConfig: n.config.cardanoNodeConfig,
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to load state database: %w", err)
