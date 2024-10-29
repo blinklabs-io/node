@@ -236,6 +236,7 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 		"connection_id", oConn.Id().String(),
 	)
 	peer.ReconnectCount = 0
+	peer.ReconnectDelay = 0
 	// Add to connection manager
 	n.connManager.AddConnection(oConn)
 	// Add to outbound connection tracking
