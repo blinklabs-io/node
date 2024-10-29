@@ -91,6 +91,9 @@ func (i *ImmutableDb) getChunkNamesFromPoint(
 		if err != nil {
 			return nil, err
 		}
+		if next == nil {
+			break
+		}
 		startSlot := next.BlockOrEbb
 		var endSlot uint64
 		for {
