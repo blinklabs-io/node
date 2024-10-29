@@ -16,6 +16,8 @@ package config
 
 import (
 	"fmt"
+	"net"
+	"strconv"
 
 	"github.com/blinklabs-io/node/topology"
 
@@ -24,14 +26,15 @@ import (
 )
 
 type Config struct {
-	BindAddr      string `split_words:"true"`
-	CardanoConfig string `                   envconfig:"config"`
-	DatabasePath  string `split_words:"true"`
-	IntersectTip  bool   `split_words:"true"`
-	Network       string
-	MetricsPort   uint `split_words:"true"`
-	Port          uint
-	Topology      string
+	BindAddr               string `split_words:"true"`
+	CardanoConfig          string `                   envconfig:"config"`
+	DatabasePath           string `split_words:"true"`
+	IntersectTip           bool   `split_words:"true"`
+	Network                string
+	MetricsPort            uint `split_words:"true"`
+	Port                   uint
+	Topology               string
+	TopologyBootstrapPeers []string `split_words:"true"`
 }
 
 var globalConfig = &Config{
@@ -64,7 +67,32 @@ func GetConfig() *Config {
 var globalTopologyConfig = &topology.TopologyConfig{}
 
 func LoadTopologyConfig() (*topology.TopologyConfig, error) {
-	if globalConfig.Topology == "" {
+	if globalConfig.Topology != "" {
+		tc, err := topology.NewTopologyConfigFromFile(globalConfig.Topology)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load topology file: %+v", err)
+		}
+		// update globalTopologyConfig
+		globalTopologyConfig = tc
+	} else if len(globalConfig.TopologyBootstrapPeers) > 0 {
+		for _, host := range globalConfig.TopologyBootstrapPeers {
+			tmpHost, tmpPort, err := net.SplitHostPort(host)
+			if err != nil {
+				return nil, err
+			}
+			tmpPortInt, err := strconv.Atoi(tmpPort)
+			if err != nil {
+				return nil, err
+			}
+			globalTopologyConfig.BootstrapPeers = append(
+				globalTopologyConfig.BootstrapPeers,
+				topology.TopologyConfigP2PAccessPoint{
+					Address: tmpHost,
+					Port:    uint(tmpPortInt),
+				},
+			)
+		}
+	} else {
 		// Use default bootstrap peers for specified network
 		network, ok := ouroboros.NetworkByName(globalConfig.Network)
 		if !ok {
@@ -85,14 +113,7 @@ func LoadTopologyConfig() (*topology.TopologyConfig, error) {
 				},
 			)
 		}
-		return globalTopologyConfig, nil
 	}
-	tc, err := topology.NewTopologyConfigFromFile(globalConfig.Topology)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load topology file: %+v", err)
-	}
-	// update globalTopologyConfig
-	globalTopologyConfig = tc
 	return globalTopologyConfig, nil
 }
 
