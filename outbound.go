@@ -134,12 +134,14 @@ func (n *Node) startOutboundConnections() {
 }
 
 func (n *Node) createOutboundConnection(peer outboundPeer) error {
-	_, span := otel.Tracer("").
-		Start(context.TODO(), "create outbound connection")
-	defer span.End()
-	span.SetAttributes(
-		attribute.String("peer.address", peer.Address),
-	)
+	t := otel.Tracer("")
+	if t != nil {
+		_, span := t.Start(context.TODO(), "create outbound connection")
+		defer span.End()
+		span.SetAttributes(
+			attribute.String("peer.address", peer.Address),
+		)
+	}
 
 	var clientAddr net.Addr
 	dialer := net.Dialer{
