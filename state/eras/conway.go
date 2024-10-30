@@ -24,10 +24,12 @@ import (
 )
 
 var ConwayEraDesc = EraDesc{
-	Id:                conway.EraIdConway,
-	Name:              conway.EraNameConway,
-	DecodePParamsFunc: DecodePParamsConway,
-	HardForkFunc:      HardForkConway,
+	Id:                      conway.EraIdConway,
+	Name:                    conway.EraNameConway,
+	DecodePParamsFunc:       DecodePParamsConway,
+	DecodePParamsUpdateFunc: DecodePParamsUpdateConway,
+	PParamsUpdateFunc:       PParamsUpdateConway,
+	HardForkFunc:            HardForkConway,
 }
 
 func DecodePParamsConway(data []byte) (any, error) {
@@ -36,6 +38,27 @@ func DecodePParamsConway(data []byte) (any, error) {
 		return nil, err
 	}
 	return ret, nil
+}
+
+func DecodePParamsUpdateConway(data []byte) (any, error) {
+	var ret conway.ConwayProtocolParameterUpdate
+	if _, err := cbor.Decode(data, &ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func PParamsUpdateConway(currentPParams any, pparamsUpdate any) (any, error) {
+	conwayPParams, ok := currentPParams.(conway.ConwayProtocolParameters)
+	if !ok {
+		return nil, fmt.Errorf("current PParams (%T) is not expected type", currentPParams)
+	}
+	conwayPParamsUpdate, ok := pparamsUpdate.(conway.ConwayProtocolParameterUpdate)
+	if !ok {
+		return nil, fmt.Errorf("PParams update (%T) is not expected type", pparamsUpdate)
+	}
+	conwayPParams.Update(&conwayPParamsUpdate)
+	return conwayPParams, nil
 }
 
 func HardForkConway(nodeConfig *cardano.CardanoNodeConfig, prevPParams any) (any, error) {

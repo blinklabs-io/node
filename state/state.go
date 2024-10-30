@@ -323,6 +323,49 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 		if e.Point.Slot > ls.currentEpoch.StartSlot+uint64(
 			ls.currentEpoch.LengthInSlots,
 		) {
+			// Check for pparam updates that apply at the end of the epoch
+			var pparamUpdates []models.PParamUpdate
+			result := txn.Metadata().Where("epoch = ?", ls.currentEpoch.EpochId).Order("id DESC").Find(&pparamUpdates)
+			if result.Error != nil {
+				return result.Error
+			}
+			if len(pparamUpdates) > 0 {
+				// We only want the latest for the epoch
+				pparamUpdate := pparamUpdates[0]
+				if eras.Eras[ls.currentEraId].DecodePParamsUpdateFunc != nil {
+					tmpPParamUpdate, err := eras.Eras[ls.currentEraId].DecodePParamsUpdateFunc(pparamUpdate.Cbor)
+					if err != nil {
+						return err
+					}
+					if eras.Eras[ls.currentEraId].PParamsUpdateFunc != nil {
+						// Update current pparams
+						newPParams, err := eras.Eras[ls.currentEraId].PParamsUpdateFunc(ls.currentPParams, tmpPParamUpdate)
+						if err != nil {
+							return err
+						}
+						ls.currentPParams = newPParams
+						ls.config.Logger.Debug(
+							"updated protocol params",
+							"pparams",
+							fmt.Sprintf("%#v", ls.currentPParams),
+						)
+						// Write pparams update to DB
+						pparamsCbor, err := cbor.Encode(&ls.currentPParams)
+						if err != nil {
+							return err
+						}
+						tmpPParams := models.PParams{
+							AddedSlot: e.Point.Slot,
+							Epoch:     ls.currentEpoch.EpochId + 1,
+							EraId:     uint(ls.currentEraId),
+							Cbor:      pparamsCbor,
+						}
+						if result := txn.Metadata().Create(&tmpPParams); result.Error != nil {
+							return result.Error
+						}
+					}
+				}
+			}
 			// Create next epoch record
 			newEpoch := models.Epoch{
 				EpochId: ls.currentEpoch.EpochId + 1,

@@ -15,16 +15,20 @@
 package eras
 
 import (
+	"fmt"
+
 	"github.com/blinklabs-io/gouroboros/cbor"
 	"github.com/blinklabs-io/gouroboros/ledger/shelley"
 	"github.com/blinklabs-io/node/config/cardano"
 )
 
 var ShelleyEraDesc = EraDesc{
-	Id:                shelley.EraIdShelley,
-	Name:              shelley.EraNameShelley,
-	DecodePParamsFunc: DecodePParamsShelley,
-	HardForkFunc:      HardForkShelley,
+	Id:                      shelley.EraIdShelley,
+	Name:                    shelley.EraNameShelley,
+	DecodePParamsFunc:       DecodePParamsShelley,
+	DecodePParamsUpdateFunc: DecodePParamsUpdateShelley,
+	PParamsUpdateFunc:       PParamsUpdateShelley,
+	HardForkFunc:            HardForkShelley,
 }
 
 func DecodePParamsShelley(data []byte) (any, error) {
@@ -33,6 +37,27 @@ func DecodePParamsShelley(data []byte) (any, error) {
 		return nil, err
 	}
 	return ret, nil
+}
+
+func DecodePParamsUpdateShelley(data []byte) (any, error) {
+	var ret shelley.ShelleyProtocolParameterUpdate
+	if _, err := cbor.Decode(data, &ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func PParamsUpdateShelley(currentPParams any, pparamsUpdate any) (any, error) {
+	shelleyPParams, ok := currentPParams.(shelley.ShelleyProtocolParameters)
+	if !ok {
+		return nil, fmt.Errorf("current PParams (%T) is not expected type", currentPParams)
+	}
+	shelleyPParamsUpdate, ok := pparamsUpdate.(shelley.ShelleyProtocolParameterUpdate)
+	if !ok {
+		return nil, fmt.Errorf("PParams update (%T) is not expected type", pparamsUpdate)
+	}
+	shelleyPParams.Update(&shelleyPParamsUpdate)
+	return shelleyPParams, nil
 }
 
 func HardForkShelley(nodeConfig *cardano.CardanoNodeConfig, prevPParams any) (any, error) {
