@@ -24,10 +24,12 @@ import (
 )
 
 var AllegraEraDesc = EraDesc{
-	Id:                allegra.EraIdAllegra,
-	Name:              allegra.EraNameAllegra,
-	DecodePParamsFunc: DecodePParamsAllegra,
-	HardForkFunc:      HardForkAllegra,
+	Id:                      allegra.EraIdAllegra,
+	Name:                    allegra.EraNameAllegra,
+	DecodePParamsFunc:       DecodePParamsAllegra,
+	DecodePParamsUpdateFunc: DecodePParamsUpdateAllegra,
+	PParamsUpdateFunc:       PParamsUpdateAllegra,
+	HardForkFunc:            HardForkAllegra,
 }
 
 func DecodePParamsAllegra(data []byte) (any, error) {
@@ -36,6 +38,27 @@ func DecodePParamsAllegra(data []byte) (any, error) {
 		return nil, err
 	}
 	return ret, nil
+}
+
+func DecodePParamsUpdateAllegra(data []byte) (any, error) {
+	var ret allegra.AllegraProtocolParameterUpdate
+	if _, err := cbor.Decode(data, &ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func PParamsUpdateAllegra(currentPParams any, pparamsUpdate any) (any, error) {
+	allegraPParams, ok := currentPParams.(allegra.AllegraProtocolParameters)
+	if !ok {
+		return nil, fmt.Errorf("current PParams (%T) is not expected type", currentPParams)
+	}
+	allegraPParamsUpdate, ok := pparamsUpdate.(allegra.AllegraProtocolParameterUpdate)
+	if !ok {
+		return nil, fmt.Errorf("PParams update (%T) is not expected type", pparamsUpdate)
+	}
+	allegraPParams.Update(&allegraPParamsUpdate)
+	return allegraPParams, nil
 }
 
 func HardForkAllegra(nodeConfig *cardano.CardanoNodeConfig, prevPParams any) (any, error) {

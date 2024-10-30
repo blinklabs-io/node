@@ -24,10 +24,12 @@ import (
 )
 
 var BabbageEraDesc = EraDesc{
-	Id:                babbage.EraIdBabbage,
-	Name:              babbage.EraNameBabbage,
-	DecodePParamsFunc: DecodePParamsBabbage,
-	HardForkFunc:      HardForkBabbage,
+	Id:                      babbage.EraIdBabbage,
+	Name:                    babbage.EraNameBabbage,
+	DecodePParamsFunc:       DecodePParamsBabbage,
+	DecodePParamsUpdateFunc: DecodePParamsUpdateBabbage,
+	PParamsUpdateFunc:       PParamsUpdateBabbage,
+	HardForkFunc:            HardForkBabbage,
 }
 
 func DecodePParamsBabbage(data []byte) (any, error) {
@@ -36,6 +38,27 @@ func DecodePParamsBabbage(data []byte) (any, error) {
 		return nil, err
 	}
 	return ret, nil
+}
+
+func DecodePParamsUpdateBabbage(data []byte) (any, error) {
+	var ret babbage.BabbageProtocolParameterUpdate
+	if _, err := cbor.Decode(data, &ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func PParamsUpdateBabbage(currentPParams any, pparamsUpdate any) (any, error) {
+	babbagePParams, ok := currentPParams.(babbage.BabbageProtocolParameters)
+	if !ok {
+		return nil, fmt.Errorf("current PParams (%T) is not expected type", currentPParams)
+	}
+	babbagePParamsUpdate, ok := pparamsUpdate.(babbage.BabbageProtocolParameterUpdate)
+	if !ok {
+		return nil, fmt.Errorf("PParams update (%T) is not expected type", pparamsUpdate)
+	}
+	babbagePParams.Update(&babbagePParamsUpdate)
+	return babbagePParams, nil
 }
 
 func HardForkBabbage(nodeConfig *cardano.CardanoNodeConfig, prevPParams any) (any, error) {

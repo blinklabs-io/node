@@ -24,10 +24,12 @@ import (
 )
 
 var MaryEraDesc = EraDesc{
-	Id:                mary.EraIdMary,
-	Name:              mary.EraNameMary,
-	DecodePParamsFunc: DecodePParamsMary,
-	HardForkFunc:      HardForkMary,
+	Id:                      mary.EraIdMary,
+	Name:                    mary.EraNameMary,
+	DecodePParamsFunc:       DecodePParamsMary,
+	DecodePParamsUpdateFunc: DecodePParamsUpdateMary,
+	PParamsUpdateFunc:       PParamsUpdateMary,
+	HardForkFunc:            HardForkMary,
 }
 
 func DecodePParamsMary(data []byte) (any, error) {
@@ -36,6 +38,27 @@ func DecodePParamsMary(data []byte) (any, error) {
 		return nil, err
 	}
 	return ret, nil
+}
+
+func DecodePParamsUpdateMary(data []byte) (any, error) {
+	var ret mary.MaryProtocolParameterUpdate
+	if _, err := cbor.Decode(data, &ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func PParamsUpdateMary(currentPParams any, pparamsUpdate any) (any, error) {
+	maryPParams, ok := currentPParams.(mary.MaryProtocolParameters)
+	if !ok {
+		return nil, fmt.Errorf("current PParams (%T) is not expected type", currentPParams)
+	}
+	maryPParamsUpdate, ok := pparamsUpdate.(mary.MaryProtocolParameterUpdate)
+	if !ok {
+		return nil, fmt.Errorf("PParams update (%T) is not expected type", pparamsUpdate)
+	}
+	maryPParams.Update(&maryPParamsUpdate)
+	return maryPParams, nil
 }
 
 func HardForkMary(nodeConfig *cardano.CardanoNodeConfig, prevPParams any) (any, error) {

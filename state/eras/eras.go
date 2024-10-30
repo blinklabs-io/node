@@ -17,10 +17,12 @@ package eras
 import "github.com/blinklabs-io/node/config/cardano"
 
 type EraDesc struct {
-	Id                uint
-	Name              string
-	DecodePParamsFunc func([]byte) (any, error)
-	HardForkFunc      func(*cardano.CardanoNodeConfig, any) (any, error)
+	Id                      uint
+	Name                    string
+	DecodePParamsFunc       func([]byte) (any, error)
+	DecodePParamsUpdateFunc func([]byte) (any, error)
+	PParamsUpdateFunc       func(any, any) (any, error)
+	HardForkFunc            func(*cardano.CardanoNodeConfig, any) (any, error)
 }
 
 var Eras = []EraDesc{

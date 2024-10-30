@@ -24,10 +24,12 @@ import (
 )
 
 var AlonzoEraDesc = EraDesc{
-	Id:                alonzo.EraIdAlonzo,
-	Name:              alonzo.EraNameAlonzo,
-	DecodePParamsFunc: DecodePParamsAlonzo,
-	HardForkFunc:      HardForkAlonzo,
+	Id:                      alonzo.EraIdAlonzo,
+	Name:                    alonzo.EraNameAlonzo,
+	DecodePParamsFunc:       DecodePParamsAlonzo,
+	DecodePParamsUpdateFunc: DecodePParamsUpdateAlonzo,
+	PParamsUpdateFunc:       PParamsUpdateAlonzo,
+	HardForkFunc:            HardForkAlonzo,
 }
 
 func DecodePParamsAlonzo(data []byte) (any, error) {
@@ -36,6 +38,27 @@ func DecodePParamsAlonzo(data []byte) (any, error) {
 		return nil, err
 	}
 	return ret, nil
+}
+
+func DecodePParamsUpdateAlonzo(data []byte) (any, error) {
+	var ret alonzo.AlonzoProtocolParameterUpdate
+	if _, err := cbor.Decode(data, &ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func PParamsUpdateAlonzo(currentPParams any, pparamsUpdate any) (any, error) {
+	alonzoPParams, ok := currentPParams.(alonzo.AlonzoProtocolParameters)
+	if !ok {
+		return nil, fmt.Errorf("current PParams (%T) is not expected type", currentPParams)
+	}
+	alonzoPParamsUpdate, ok := pparamsUpdate.(alonzo.AlonzoProtocolParameterUpdate)
+	if !ok {
+		return nil, fmt.Errorf("PParams update (%T) is not expected type", pparamsUpdate)
+	}
+	alonzoPParams.Update(&alonzoPParamsUpdate)
+	return alonzoPParams, nil
 }
 
 func HardForkAlonzo(nodeConfig *cardano.CardanoNodeConfig, prevPParams any) (any, error) {
