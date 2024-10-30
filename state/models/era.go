@@ -14,12 +14,35 @@
 
 package models
 
-// MigrateModels contains a list of model objects that should have DB migrations applied
-var MigrateModels = []any{
-	&Block{},
-	&Epoch{},
-	&Era{},
-	&PParams{},
-	&PParamUpdate{},
-	&Utxo{},
+import "github.com/blinklabs-io/node/database"
+
+type Era struct {
+	ID         uint `gorm:"primarykey"`
+	EraId      uint
+	StartEpoch uint
+}
+
+func (Era) TableName() string {
+	return "era"
+}
+
+func EraLatest(db database.Database) (Era, error) {
+	var ret Era
+	txn := db.Transaction(false)
+	err := txn.Do(func(txn *database.Txn) error {
+		var err error
+		ret, err = EraLatestTxn(txn)
+		return err
+	})
+	return ret, err
+}
+
+func EraLatestTxn(txn *database.Txn) (Era, error) {
+	var ret Era
+	result := txn.Metadata().Order("era_id DESC").
+		First(&ret)
+	if result.Error != nil {
+		return ret, result.Error
+	}
+	return ret, nil
 }

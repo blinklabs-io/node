@@ -26,7 +26,7 @@ type TopologyConfig struct {
 	LocalRoots         []TopologyConfigP2PLocalRoot     `json:"localRoots"`
 	PublicRoots        []TopologyConfigP2PPublicRoot    `json:"publicRoots"`
 	BootstrapPeers     []TopologyConfigP2PBootstrapPeer `json:"bootstrapPeers"`
-	UseLedgerAfterSlot uint64                           `json:"useLedgerAfterSlot"`
+	UseLedgerAfterSlot int64                            `json:"useLedgerAfterSlot"`
 }
 
 type TopologyConfigLegacyProducer struct {

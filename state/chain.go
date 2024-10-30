@@ -86,8 +86,8 @@ func (ci *ChainIterator) Next(blocking bool) (*ChainIteratorResult, error) {
 		return nil, nil
 	}
 	// Wait for new block or a rollback
-	blockSubId, blockChan := ci.ls.eventBus.Subscribe(ChainBlockEventType)
-	rollbackSubId, rollbackChan := ci.ls.eventBus.Subscribe(
+	blockSubId, blockChan := ci.ls.config.EventBus.Subscribe(ChainBlockEventType)
+	rollbackSubId, rollbackChan := ci.ls.config.EventBus.Subscribe(
 		ChainRollbackEventType,
 	)
 	// Release read lock while we wait for new event
@@ -111,7 +111,7 @@ func (ci *ChainIterator) Next(blocking bool) (*ChainIteratorResult, error) {
 		ret.Point = rollbackData.Point
 		ret.Rollback = true
 	}
-	ci.ls.eventBus.Unsubscribe(ChainBlockEventType, blockSubId)
-	ci.ls.eventBus.Unsubscribe(ChainRollbackEventType, rollbackSubId)
+	ci.ls.config.EventBus.Unsubscribe(ChainBlockEventType, blockSubId)
+	ci.ls.config.EventBus.Unsubscribe(ChainRollbackEventType, rollbackSubId)
 	return ret, nil
 }

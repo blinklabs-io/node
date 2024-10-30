@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package models
+package eras
 
-// MigrateModels contains a list of model objects that should have DB migrations applied
-var MigrateModels = []any{
-	&Block{},
-	&Epoch{},
-	&Era{},
-	&PParams{},
-	&PParamUpdate{},
-	&Utxo{},
+import "github.com/blinklabs-io/gouroboros/ledger/byron"
+
+var ByronEraDesc = EraDesc{
+	Id:   byron.EraIdByron,
+	Name: byron.EraNameByron,
 }
