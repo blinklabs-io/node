@@ -481,6 +481,10 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 					}
 				}
 			}
+			// Certificates
+			if err := ls.processTransactionCertificates(txn, e.Point, tx); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
