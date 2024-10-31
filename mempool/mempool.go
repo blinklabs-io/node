@@ -15,10 +15,8 @@
 package mempool
 
 import (
-	"fmt"
 	"io"
 	"log/slog"
-	"slices"
 	"sync"
 	"time"
 
@@ -62,9 +60,9 @@ type Mempool struct {
 	eventBus           *event.EventBus
 	consumers          map[ouroboros.ConnectionId]*MempoolConsumer
 	consumersMutex     sync.Mutex
-	consumerIndex      map[ouroboros.ConnectionId]int
+	consumerIndex      map[ouroboros.ConnectionId]map[string]*MempoolTransaction
 	consumerIndexMutex sync.Mutex
-	transactions       []*MempoolTransaction
+	transactions       map[string]*MempoolTransaction
 	metrics            struct {
 		txsProcessedNum prometheus.Counter
 		txsInMempool    prometheus.Gauge
@@ -119,21 +117,23 @@ func (m *Mempool) AddConsumer(connId ouroboros.ConnectionId) *MempoolConsumer {
 		for {
 			m.Lock()
 			m.consumerIndexMutex.Lock()
-			nextTxIdx, ok := m.consumerIndex[connId]
+			mempoolTx, ok := m.consumerIndex[connId]
 			if !ok {
 				// Our consumer has disappeared
 				m.consumerIndexMutex.Unlock()
 				return
 			}
-			if nextTxIdx >= len(m.transactions) {
-				// We've reached the current end of the mempool
+			if len(mempoolTx) == 0 {
+				// Snapshot mempool and continue
+				m.consumerIndex[connId] = m.transactions
 				m.consumerIndexMutex.Unlock()
-				return
+				continue
 			}
-			nextTx := m.transactions[nextTxIdx]
-			if consumer.pushTx(nextTx, true) {
-				nextTxIdx++
-				m.consumerIndex[connId] = nextTxIdx
+			for hash, tx := range mempoolTx {
+				if consumer.pushTx(tx, true) {
+					delete(mempoolTx, hash)
+					m.consumerIndex[connId] = mempoolTx
+				}
 			}
 			m.consumerIndexMutex.Unlock()
 			m.Unlock()
@@ -171,11 +171,9 @@ func (m *Mempool) removeExpired() {
 		if tx.LastSeen.Before(expiredBefore) {
 			m.removeTransaction(tx.Hash)
 			m.logger.Debug(
-				fmt.Sprintf(
-					"removed expired transaction %s",
-					tx.Hash,
-				),
+				"removed expired transaction",
 				"component", "mempool",
+				"tx_hash", tx.Hash,
 			)
 		}
 	}
@@ -200,34 +198,47 @@ func (m *Mempool) AddTransaction(tx MempoolTransaction) error {
 	if existingTx != nil {
 		tx.LastSeen = time.Now()
 		m.logger.Debug(
-			fmt.Sprintf(
-				"updated last seen for transaction %s",
-				tx.Hash,
-			),
+			"updated last seen for transaction",
 			"component", "mempool",
+			"tx_hash", tx.Hash,
 		)
 		return nil
 	}
 	// Add transaction record
-	m.transactions = append(m.transactions, &tx)
+	m.transactions[tx.Hash] = &tx
 	m.logger.Debug(
-		fmt.Sprintf("added transaction %s", tx.Hash),
+		"added transaction",
 		"component", "mempool",
+		"tx_hash", tx.Hash,
 	)
 	m.metrics.txsProcessedNum.Inc()
 	m.metrics.txsInMempool.Inc()
 	m.metrics.mempoolBytes.Add(float64(len(tx.Cbor)))
-	// Send new TX to consumers that are ready for it
-	newTxIdx := len(m.transactions) - 1
-	for connId, consumerIdx := range m.consumerIndex {
-		if consumerIdx == newTxIdx {
+
+	// Send new Tx to consumers that don't have it
+	for connId := range m.consumerIndex {
+		found := false
+		for hash, tx := range m.consumerIndex[connId] {
+			if found {
+				break
+			}
+			if hash == tx.Hash {
+				found = true
+			}
+		}
+		if !found {
 			consumer := m.consumers[connId]
 			if consumer.pushTx(&tx, false) {
-				consumerIdx++
-				m.consumerIndex[connId] = consumerIdx
+				m.logger.Debug(
+					"sending transaction",
+					"component", "mempool",
+					"connection_id", connId.String(),
+					"tx_hash", tx.Hash,
+				)
 			}
 		}
 	}
+
 	// Generate event
 	m.eventBus.Publish(
 		AddTransactionEventType,
@@ -254,57 +265,44 @@ func (m *Mempool) GetTransaction(txHash string) (MempoolTransaction, bool) {
 }
 
 func (m *Mempool) getTransaction(txHash string) *MempoolTransaction {
-	for _, tx := range m.transactions {
-		if tx.Hash == txHash {
-			return tx
-		}
-	}
-	return nil
+	return m.transactions[txHash]
 }
 
-func (m *Mempool) RemoveTransaction(hash string) {
+func (m *Mempool) RemoveTransaction(txHash string) {
 	m.Lock()
 	defer m.Unlock()
-	if m.removeTransaction(hash) {
+	if m.removeTransaction(txHash) {
 		m.logger.Debug(
-			fmt.Sprintf("removed transaction %s", hash),
+			"removed transaction",
 			"component", "mempool",
+			"tx_hash", txHash,
 		)
 	}
 }
 
-func (m *Mempool) removeTransaction(hash string) bool {
-	for txIdx, tx := range m.transactions {
-		if tx.Hash == hash {
-			m.consumerIndexMutex.Lock()
-			m.transactions = slices.Delete(
-				m.transactions,
-				txIdx,
-				txIdx+1,
-			)
-			m.metrics.txsInMempool.Dec()
-			m.metrics.mempoolBytes.Sub(float64(len(tx.Cbor)))
-			// Update consumer indexes to reflect removed TX
-			for connId, consumerIdx := range m.consumerIndex {
-				// Decrement consumer index if the consumer has reached the removed TX
-				if consumerIdx >= txIdx {
-					consumerIdx--
-				}
-				m.consumerIndex[connId] = consumerIdx
-			}
-			m.consumerIndexMutex.Unlock()
-			// Generate event
-			m.eventBus.Publish(
-				RemoveTransactionEventType,
-				event.NewEvent(
-					RemoveTransactionEventType,
-					RemoveTransactionEvent{
-						Hash: tx.Hash,
-					},
-				),
-			)
-			return true
+func (m *Mempool) removeTransaction(txHash string) bool {
+	if m.transactions[txHash] != nil {
+		m.consumerIndexMutex.Lock()
+		tx := m.transactions[txHash]
+		delete(m.transactions, txHash)
+		m.metrics.txsInMempool.Dec()
+		m.metrics.mempoolBytes.Sub(float64(len(tx.Cbor)))
+		// Update consumer indexes to reflect removed TX
+		for connId := range m.consumerIndex {
+			delete(m.consumerIndex[connId], txHash)
 		}
+		m.consumerIndexMutex.Unlock()
+		// Generate event
+		m.eventBus.Publish(
+			RemoveTransactionEventType,
+			event.NewEvent(
+				RemoveTransactionEventType,
+				RemoveTransactionEvent{
+					Hash: tx.Hash,
+				},
+			),
+		)
+		return true
 	}
 	return false
 }
