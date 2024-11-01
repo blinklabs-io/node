@@ -14,19 +14,13 @@
 
 package models
 
-// MigrateModels contains a list of model objects that should have DB migrations applied
-var MigrateModels = []any{
-	&Block{},
-	&Epoch{},
-	&Era{},
-	&PoolRegistration{},
-	&PoolRegistrationOwner{},
-	&PoolRegistrationRelay{},
-	&PoolRetirement{},
-	&StakeRegistration{},
-	&StakeDeregistration{},
-	&StakeDelegation{},
-	&PParams{},
-	&PParamUpdate{},
-	&Utxo{},
+type PoolRetirement struct {
+	ID          uint   `gorm:"primarykey"`
+	PoolKeyHash []byte `gorm:"index"`
+	Epoch       uint
+	AddedSlot   uint64
+}
+
+func (PoolRetirement) TableName() string {
+	return "pool_retirement"
 }
