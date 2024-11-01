@@ -33,7 +33,6 @@ type ConnectionManagerTag uint16
 const (
 	ConnectionManagerTagNone ConnectionManagerTag = iota
 
-	ConnectionManagerTagHostProducer
 	ConnectionManagerTagHostLocalRoot
 	ConnectionManagerTagHostPublicRoot
 	ConnectionManagerTagHostBootstrapPeer
@@ -47,7 +46,6 @@ const (
 
 func (c ConnectionManagerTag) String() string {
 	tmp := map[ConnectionManagerTag]string{
-		ConnectionManagerTagHostProducer:      "HostProducer",
 		ConnectionManagerTagHostLocalRoot:     "HostLocalRoot",
 		ConnectionManagerTagHostPublicRoot:    "HostPublicRoot",
 		ConnectionManagerTagHostBootstrapPeer: "HostBootstrapPeer",
@@ -123,9 +121,6 @@ func (c *ConnectionManager) AddHost(
 func (c *ConnectionManager) AddHostsFromTopology(
 	topologyConfig *topology.TopologyConfig,
 ) {
-	for _, host := range topologyConfig.Producers {
-		c.AddHost(host.Address, host.Port, ConnectionManagerTagHostProducer)
-	}
 	for _, bootstrapPeer := range topologyConfig.BootstrapPeers {
 		c.AddHost(
 			bootstrapPeer.Address,

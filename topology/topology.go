@@ -22,19 +22,10 @@ import (
 
 // TopologyConfig represents a Cardano node topology config
 type TopologyConfig struct {
-	Producers          []TopologyConfigLegacyProducer   `json:"Producers"`
 	LocalRoots         []TopologyConfigP2PLocalRoot     `json:"localRoots"`
 	PublicRoots        []TopologyConfigP2PPublicRoot    `json:"publicRoots"`
 	BootstrapPeers     []TopologyConfigP2PBootstrapPeer `json:"bootstrapPeers"`
 	UseLedgerAfterSlot int64                            `json:"useLedgerAfterSlot"`
-}
-
-type TopologyConfigLegacyProducer struct {
-	Address   string `json:"addr"`
-	Port      uint   `json:"port"`
-	Valency   uint   `json:"valency"`
-	Continent string `json:"continent"`
-	State     string `json:"state"`
 }
 
 type TopologyConfigP2PAccessPoint struct {
