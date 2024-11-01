@@ -15,7 +15,6 @@
 package mempool
 
 import (
-	"fmt"
 	"io"
 	"log/slog"
 	"slices"
@@ -171,11 +170,9 @@ func (m *Mempool) removeExpired() {
 		if tx.LastSeen.Before(expiredBefore) {
 			m.removeTransaction(tx.Hash)
 			m.logger.Debug(
-				fmt.Sprintf(
-					"removed expired transaction %s",
-					tx.Hash,
-				),
+				"removed expired transaction",
 				"component", "mempool",
+				"tx_hash", tx.Hash,
 			)
 		}
 	}
@@ -200,19 +197,18 @@ func (m *Mempool) AddTransaction(tx MempoolTransaction) error {
 	if existingTx != nil {
 		tx.LastSeen = time.Now()
 		m.logger.Debug(
-			fmt.Sprintf(
-				"updated last seen for transaction %s",
-				tx.Hash,
-			),
+			"updated last seen for transaction",
 			"component", "mempool",
+			"tx_hash", tx.Hash,
 		)
 		return nil
 	}
 	// Add transaction record
 	m.transactions = append(m.transactions, &tx)
 	m.logger.Debug(
-		fmt.Sprintf("added transaction %s", tx.Hash),
+		"added transaction",
 		"component", "mempool",
+		"tx_hash", tx.Hash,
 	)
 	m.metrics.txsProcessedNum.Inc()
 	m.metrics.txsInMempool.Inc()
@@ -262,20 +258,21 @@ func (m *Mempool) getTransaction(txHash string) *MempoolTransaction {
 	return nil
 }
 
-func (m *Mempool) RemoveTransaction(hash string) {
+func (m *Mempool) RemoveTransaction(txHash string) {
 	m.Lock()
 	defer m.Unlock()
-	if m.removeTransaction(hash) {
+	if m.removeTransaction(txHash) {
 		m.logger.Debug(
-			fmt.Sprintf("removed transaction %s", hash),
+			"removed transaction",
 			"component", "mempool",
+			"tx_hash", txHash,
 		)
 	}
 }
 
-func (m *Mempool) removeTransaction(hash string) bool {
+func (m *Mempool) removeTransaction(txHash string) bool {
 	for txIdx, tx := range m.transactions {
-		if tx.Hash == hash {
+		if tx.Hash == txHash {
 			m.consumerIndexMutex.Lock()
 			m.transactions = slices.Delete(
 				m.transactions,
