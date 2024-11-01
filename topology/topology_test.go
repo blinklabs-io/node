@@ -31,28 +31,6 @@ var topologyTests = []topologyTestDefinition{
 	{
 		jsonData: `
 {
-  "Producers": [
-    {
-      "addr": "backbone.cardano.iog.io",
-      "port": 3001,
-      "valency": 2
-    }
-  ]
-}
-`,
-		expectedObject: &topology.TopologyConfig{
-			Producers: []topology.TopologyConfigLegacyProducer{
-				{
-					Address: "backbone.cardano.iog.io",
-					Port:    3001,
-					Valency: 2,
-				},
-			},
-		},
-	},
-	{
-		jsonData: `
-{
   "localRoots": [
     {
       "accessPoints": [],

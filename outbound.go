@@ -49,21 +49,6 @@ func (n *Node) startOutboundConnections() {
 		"role", "client",
 	)
 	var tmpHosts []string
-	for _, host := range n.config.topologyConfig.Producers {
-		n.config.logger.Debug(
-			fmt.Sprintf(
-				"adding legacy topology host: %s:%d",
-				host.Address,
-				host.Port,
-			),
-			"component", "network",
-			"role", "client",
-		)
-		tmpHosts = append(
-			tmpHosts,
-			net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))),
-		)
-	}
 	for _, host := range n.config.topologyConfig.BootstrapPeers {
 		n.config.logger.Debug(
 			fmt.Sprintf(
