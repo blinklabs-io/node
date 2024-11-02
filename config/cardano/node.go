@@ -29,12 +29,16 @@ import (
 // CardanoNodeConfig represents the config.json/yaml file used by cardano-node
 type CardanoNodeConfig struct {
 	path               string
+	alonzoGenesis      *alonzo.AlonzoGenesis
 	AlonzoGenesisFile  string `yaml:"AlonzoGenesisFile"`
 	AlonzoGenesisHash  string `yaml:"AlonzoGenesisHash"`
+	byronGenesis       *byron.ByronGenesis
 	ByronGenesisFile   string `yaml:"ByronGenesisFile"`
 	ByronGenesisHash   string `yaml:"ByronGenesisHash"`
+	conwayGenesis      *conway.ConwayGenesis
 	ConwayGenesisFile  string `yaml:"ConwayGenesisFile"`
 	ConwayGenesisHash  string `yaml:"ConwayGenesisHash"`
+	shelleyGenesis     *shelley.ShelleyGenesis
 	ShelleyGenesisFile string `yaml:"ShelleyGenesisFile"`
 	ShelleyGenesisHash string `yaml:"ShelleyGenesisHash"`
 	// TODO: add more fields from cardano-node config as we need them
@@ -64,44 +68,60 @@ func NewCardanoNodeConfigFromFile(file string) (*CardanoNodeConfig, error) {
 
 // ByronGenesis loads and returns the Byron genesis config specified in the node config
 func (c *CardanoNodeConfig) ByronGenesis() (*byron.ByronGenesis, error) {
+	if c.byronGenesis != nil {
+		return c.byronGenesis, nil
+	}
 	tmpPath := path.Join(c.path, c.ByronGenesisFile)
 	// TODO: check genesis file hash
 	ret, err := byron.NewByronGenesisFromFile(tmpPath)
 	if err != nil {
 		return nil, err
 	}
+	c.byronGenesis = &ret
 	return &ret, err
 }
 
 // ShelleyGenesis loads and returns the Shelley genesis config specified in the node config
 func (c *CardanoNodeConfig) ShelleyGenesis() (*shelley.ShelleyGenesis, error) {
+	if c.shelleyGenesis != nil {
+		return c.shelleyGenesis, nil
+	}
 	tmpPath := path.Join(c.path, c.ShelleyGenesisFile)
 	// TODO: check genesis file hash
 	ret, err := shelley.NewShelleyGenesisFromFile(tmpPath)
 	if err != nil {
 		return nil, err
 	}
+	c.shelleyGenesis = &ret
 	return &ret, err
 }
 
 // AlonzoGenesis loads and returns the Alonzo genesis config specified in the node config
 func (c *CardanoNodeConfig) AlonzoGenesis() (*alonzo.AlonzoGenesis, error) {
+	if c.alonzoGenesis != nil {
+		return c.alonzoGenesis, nil
+	}
 	tmpPath := path.Join(c.path, c.AlonzoGenesisFile)
 	// TODO: check genesis file hash
 	ret, err := alonzo.NewAlonzoGenesisFromFile(tmpPath)
 	if err != nil {
 		return nil, err
 	}
+	c.alonzoGenesis = &ret
 	return &ret, err
 }
 
 // ConwayGenesis loads and returns the Conway genesis config specified in the node config
 func (c *CardanoNodeConfig) ConwayGenesis() (*conway.ConwayGenesis, error) {
+	if c.conwayGenesis != nil {
+		return c.conwayGenesis, nil
+	}
 	tmpPath := path.Join(c.path, c.ConwayGenesisFile)
 	// TODO: check genesis file hash
 	ret, err := conway.NewConwayGenesisFromFile(tmpPath)
 	if err != nil {
 		return nil, err
 	}
+	c.conwayGenesis = &ret
 	return &ret, err
 }
