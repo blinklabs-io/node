@@ -29,6 +29,7 @@ var ShelleyEraDesc = EraDesc{
 	DecodePParamsUpdateFunc: DecodePParamsUpdateShelley,
 	PParamsUpdateFunc:       PParamsUpdateShelley,
 	HardForkFunc:            HardForkShelley,
+	EpochLengthFunc:         EpochLengthShelley,
 }
 
 func DecodePParamsShelley(data []byte) (any, error) {
@@ -79,4 +80,14 @@ func HardForkShelley(
 	}
 	ret.UpdateFromGenesis(shelleyGenesis)
 	return ret, nil
+}
+
+func EpochLengthShelley(nodeConfig *cardano.CardanoNodeConfig) (uint, uint, error) {
+	shelleyGenesis, err := nodeConfig.ShelleyGenesis()
+	if err != nil {
+		return 0, 0, err
+	}
+	return uint(shelleyGenesis.SlotLength * 1000),
+		uint(shelleyGenesis.EpochLength),
+		nil
 }

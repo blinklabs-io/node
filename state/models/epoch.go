@@ -20,11 +20,11 @@ type Epoch struct {
 	ID uint `gorm:"primarykey"`
 	// NOTE: we would normally use this as the primary key, but GORM doesn't
 	// like a primary key value of 0
-	EpochId             uint `gorm:"uniqueIndex"`
-	EraId               uint8
-	StartSlot           uint64
-	SlotLengthInSeconds uint
-	LengthInSlots       uint
+	EpochId       uint `gorm:"uniqueIndex"`
+	EraId         uint
+	StartSlot     uint64
+	SlotLength    uint
+	LengthInSlots uint
 }
 
 func (Epoch) TableName() string {

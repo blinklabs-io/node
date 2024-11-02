@@ -30,6 +30,7 @@ var MaryEraDesc = EraDesc{
 	DecodePParamsUpdateFunc: DecodePParamsUpdateMary,
 	PParamsUpdateFunc:       PParamsUpdateMary,
 	HardForkFunc:            HardForkMary,
+	EpochLengthFunc:         EpochLengthShelley,
 }
 
 func DecodePParamsMary(data []byte) (any, error) {

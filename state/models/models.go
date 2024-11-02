@@ -18,7 +18,6 @@ package models
 var MigrateModels = []any{
 	&Block{},
 	&Epoch{},
-	&Era{},
 	&PoolRegistration{},
 	&PoolRegistrationOwner{},
 	&PoolRegistrationRelay{},

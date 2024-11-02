@@ -30,7 +30,6 @@ import (
 
 	"github.com/blinklabs-io/gouroboros/cbor"
 	"github.com/blinklabs-io/gouroboros/ledger"
-	"github.com/blinklabs-io/gouroboros/ledger/byron"
 	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 	"gorm.io/gorm"
@@ -55,7 +54,7 @@ type LedgerState struct {
 	timerCleanupConsumedUtxos *time.Timer
 	currentPParams            any
 	currentEpoch              models.Epoch
-	currentEraId              uint8
+	currentEra                eras.EraDesc
 }
 
 func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
@@ -94,10 +93,6 @@ func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
 	// Schedule periodic process to purge consumed UTxOs outside of the rollback window
 	ls.scheduleCleanupConsumedUtxos()
 	// TODO: schedule process to scan/clean blob DB for keys that don't have a corresponding metadata DB entry
-	// Load current era from DB
-	if err := ls.loadEra(); err != nil {
-		return nil, err
-	}
 	// Load current epoch from DB
 	if err := ls.loadEpoch(); err != nil {
 		return nil, err
@@ -302,16 +297,29 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 	// Start a transaction
 	txn := ls.db.Transaction(true)
 	err := txn.Do(func(txn *database.Txn) error {
-		// TODO: move this somewhere else
-		// Check for epoch change
+		// Special handling for genesis block
 		if ls.currentEpoch.ID == 0 {
-			// Create initial epoch
+			// Check for era change
+			if uint(e.Block.Era().Id) != ls.currentEra.Id {
+				targetEraId := uint(e.Block.Era().Id)
+				// Transition through every era between the current and the target era
+				for nextEraId := ls.currentEra.Id + 1; nextEraId <= targetEraId; nextEraId++ {
+					if err := ls.transitionToEra(txn, nextEraId, ls.currentEpoch.EpochId, e.Point.Slot); err != nil {
+						return err
+					}
+				}
+			}
+			// Create initial epoch record
+			epochSlotLength, epochLength, err := ls.currentEra.EpochLengthFunc(ls.config.CardanoNodeConfig)
+			if err != nil {
+				return err
+			}
 			newEpoch := models.Epoch{
-				EpochId:             0,
-				EraId:               ls.currentEraId,
-				StartSlot:           0,
-				SlotLengthInSeconds: 20,
-				LengthInSlots:       21600,
+				EpochId:       0,
+				EraId:         ls.currentEra.Id,
+				StartSlot:     0,
+				SlotLength:    epochSlotLength,
+				LengthInSlots: epochLength,
 			}
 			if result := txn.Metadata().Create(&newEpoch); result.Error != nil {
 				return result.Error
@@ -323,75 +331,27 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 				"component", "ledger",
 			)
 		}
+		// Check for epoch rollover
 		if e.Point.Slot > ls.currentEpoch.StartSlot+uint64(
 			ls.currentEpoch.LengthInSlots,
 		) {
-			// Check for pparam updates that apply at the end of the epoch
-			var pparamUpdates []models.PParamUpdate
-			result := txn.Metadata().
-				Where("epoch = ?", ls.currentEpoch.EpochId).
-				Order("id DESC").
-				Find(&pparamUpdates)
-			if result.Error != nil {
-				return result.Error
-			}
-			if len(pparamUpdates) > 0 {
-				// We only want the latest for the epoch
-				pparamUpdate := pparamUpdates[0]
-				if eras.Eras[ls.currentEraId].DecodePParamsUpdateFunc != nil {
-					tmpPParamUpdate, err := eras.Eras[ls.currentEraId].DecodePParamsUpdateFunc(
-						pparamUpdate.Cbor,
-					)
-					if err != nil {
-						return err
-					}
-					if eras.Eras[ls.currentEraId].PParamsUpdateFunc != nil {
-						// Update current pparams
-						newPParams, err := eras.Eras[ls.currentEraId].PParamsUpdateFunc(
-							ls.currentPParams,
-							tmpPParamUpdate,
-						)
-						if err != nil {
-							return err
-						}
-						ls.currentPParams = newPParams
-						ls.config.Logger.Debug(
-							"updated protocol params",
-							"pparams",
-							fmt.Sprintf("%#v", ls.currentPParams),
-						)
-						// Write pparams update to DB
-						pparamsCbor, err := cbor.Encode(&ls.currentPParams)
-						if err != nil {
-							return err
-						}
-						tmpPParams := models.PParams{
-							AddedSlot: e.Point.Slot,
-							Epoch:     ls.currentEpoch.EpochId + 1,
-							EraId:     uint(ls.currentEraId),
-							Cbor:      pparamsCbor,
-						}
-						if result := txn.Metadata().Create(&tmpPParams); result.Error != nil {
-							return result.Error
-						}
-					}
-				}
+			// Apply pending pparam updates
+			if err := ls.applyPParamUpdates(txn, ls.currentEpoch.EpochId, e.Point.Slot); err != nil {
+				return err
 			}
 			// Create next epoch record
+			epochSlotLength, epochLength, err := ls.currentEra.EpochLengthFunc(ls.config.CardanoNodeConfig)
+			if err != nil {
+				return err
+			}
 			newEpoch := models.Epoch{
-				EpochId: ls.currentEpoch.EpochId + 1,
-				EraId:   e.Block.Era().Id,
+				EpochId:       ls.currentEpoch.EpochId + 1,
+				EraId:         uint(e.Block.Era().Id),
+				SlotLength:    epochSlotLength,
+				LengthInSlots: epochLength,
 				StartSlot: ls.currentEpoch.StartSlot + uint64(
 					ls.currentEpoch.LengthInSlots,
 				),
-			}
-			// TODO: replace with protocol param lookups
-			if ls.currentEraId == byron.EraIdByron {
-				newEpoch.SlotLengthInSeconds = 20
-				newEpoch.LengthInSlots = 21600
-			} else {
-				newEpoch.SlotLengthInSeconds = 1
-				newEpoch.LengthInSlots = 432000
 			}
 			if result := txn.Metadata().Create(&newEpoch); result.Error != nil {
 				return result.Error
@@ -403,53 +363,14 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 				"component", "ledger",
 			)
 		}
-		// TODO: move this somewhere else
 		// TODO: track this using protocol params and hard forks
-		// Check for era rollover
-		if e.Block.Era().Id != ls.currentEraId {
-			targetEraId := e.Block.Era().Id
+		// Check for era change
+		if uint(e.Block.Era().Id) != ls.currentEra.Id {
+			targetEraId := uint(e.Block.Era().Id)
 			// Transition through every era between the current and the target era
-			for nextEraId := ls.currentEraId + 1; nextEraId <= targetEraId; nextEraId++ {
-				nextEra := eras.Eras[nextEraId]
-				if nextEra.HardForkFunc != nil {
-					// Perform hard fork
-					// This generally means upgrading pparams from previous era
-					newPParams, err := nextEra.HardForkFunc(
-						ls.config.CardanoNodeConfig,
-						ls.currentPParams,
-					)
-					if err != nil {
-						return err
-					}
-					ls.currentPParams = newPParams
-					ls.config.Logger.Debug(
-						"updated protocol params",
-						"pparams",
-						fmt.Sprintf("%#v", ls.currentPParams),
-					)
-					// Write pparams update to DB
-					pparamsCbor, err := cbor.Encode(&ls.currentPParams)
-					if err != nil {
-						return err
-					}
-					tmpPParams := models.PParams{
-						AddedSlot: e.Point.Slot,
-						Epoch:     ls.currentEpoch.EpochId,
-						EraId:     uint(nextEraId),
-						Cbor:      pparamsCbor,
-					}
-					if result := txn.Metadata().Create(&tmpPParams); result.Error != nil {
-						return result.Error
-					}
-				}
-				ls.currentEraId = nextEraId
-				// Add entry for era to DB
-				tmpEra := models.Era{
-					EraId:      uint(nextEraId),
-					StartEpoch: ls.currentEpoch.EpochId,
-				}
-				if result := txn.Metadata().Create(&tmpEra); result.Error != nil {
-					return result.Error
+			for nextEraId := ls.currentEra.Id + 1; nextEraId <= targetEraId; nextEraId++ {
+				if err := ls.transitionToEra(txn, nextEraId, ls.currentEpoch.EpochId, e.Point.Slot); err != nil {
+					return err
 				}
 			}
 		}
@@ -525,6 +446,98 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 		"component",
 		"ledger",
 	)
+	return nil
+}
+
+func (ls *LedgerState) transitionToEra(txn *database.Txn, nextEraId uint, startEpoch uint, addedSlot uint64) error {
+	nextEra := eras.Eras[nextEraId]
+	if nextEra.HardForkFunc != nil {
+		// Perform hard fork
+		// This generally means upgrading pparams from previous era
+		newPParams, err := nextEra.HardForkFunc(
+			ls.config.CardanoNodeConfig,
+			ls.currentPParams,
+		)
+		if err != nil {
+			return err
+		}
+		ls.currentPParams = newPParams
+		ls.config.Logger.Debug(
+			"updated protocol params",
+			"pparams",
+			fmt.Sprintf("%#v", ls.currentPParams),
+		)
+		// Write pparams update to DB
+		pparamsCbor, err := cbor.Encode(&ls.currentPParams)
+		if err != nil {
+			return err
+		}
+		tmpPParams := models.PParams{
+			AddedSlot: addedSlot,
+			Epoch:     startEpoch,
+			EraId:     nextEraId,
+			Cbor:      pparamsCbor,
+		}
+		if result := txn.Metadata().Create(&tmpPParams); result.Error != nil {
+			return result.Error
+		}
+	}
+	ls.currentEra = nextEra
+	return nil
+}
+
+func (ls *LedgerState) applyPParamUpdates(txn *database.Txn, currentEpoch uint, addedSlot uint64) error {
+	// Check for pparam updates that apply at the end of the epoch
+	var pparamUpdates []models.PParamUpdate
+	result := txn.Metadata().
+		Where("epoch = ?", currentEpoch).
+		Order("id DESC").
+		Find(&pparamUpdates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if len(pparamUpdates) > 0 {
+		// We only want the latest for the epoch
+		pparamUpdate := pparamUpdates[0]
+		if ls.currentEra.DecodePParamsUpdateFunc != nil {
+			tmpPParamUpdate, err := ls.currentEra.DecodePParamsUpdateFunc(
+				pparamUpdate.Cbor,
+			)
+			if err != nil {
+				return err
+			}
+			if ls.currentEra.PParamsUpdateFunc != nil {
+				// Update current pparams
+				newPParams, err := ls.currentEra.PParamsUpdateFunc(
+					ls.currentPParams,
+					tmpPParamUpdate,
+				)
+				if err != nil {
+					return err
+				}
+				ls.currentPParams = newPParams
+				ls.config.Logger.Debug(
+					"updated protocol params",
+					"pparams",
+					fmt.Sprintf("%#v", ls.currentPParams),
+				)
+				// Write pparams update to DB
+				pparamsCbor, err := cbor.Encode(&ls.currentPParams)
+				if err != nil {
+					return err
+				}
+				tmpPParams := models.PParams{
+					AddedSlot: addedSlot,
+					Epoch:     currentEpoch + 1,
+					EraId:     ls.currentEra.Id,
+					Cbor:      pparamsCbor,
+				}
+				if result := txn.Metadata().Create(&tmpPParams); result.Error != nil {
+					return result.Error
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -606,7 +619,7 @@ func (ls *LedgerState) loadPParams() error {
 		}
 		return result.Error
 	}
-	currentPParams, err := eras.Eras[ls.currentEraId].DecodePParamsFunc(
+	currentPParams, err := ls.currentEra.DecodePParamsFunc(
 		tmpPParams.Cbor,
 	)
 	if err != nil {
@@ -619,24 +632,12 @@ func (ls *LedgerState) loadPParams() error {
 func (ls *LedgerState) loadEpoch() error {
 	tmpEpoch, err := models.EpochLatest(ls.db)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil
+		if err != gorm.ErrRecordNotFound {
+			return err
 		}
-		return err
 	}
 	ls.currentEpoch = tmpEpoch
-	return nil
-}
-
-func (ls *LedgerState) loadEra() error {
-	tmpEra, err := models.EraLatest(ls.db)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil
-		}
-		return err
-	}
-	ls.currentEraId = uint8(tmpEra.EraId)
+	ls.currentEra = eras.Eras[tmpEpoch.EraId]
 	return nil
 }
 
