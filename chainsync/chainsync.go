@@ -123,7 +123,7 @@ func (s *State) AddBlock(block ledger.Block, blockType uint) error {
 	// TODO: figure out something for Byron. this won't work, since the
 	// block number isn't stored in the block itself
 	blockNumber := block.BlockNumber()
-	// Uodate metrics
+	// Update metrics
 	s.metrics.blockNum.Set(float64(blockNumber))
 	s.metrics.slotNum.Set(float64(slotNumber))
 	// Generate event

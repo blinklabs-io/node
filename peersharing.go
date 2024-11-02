@@ -15,6 +15,10 @@
 package node
 
 import (
+	"fmt"
+	"net"
+	"strconv"
+
 	opeersharing "github.com/blinklabs-io/gouroboros/protocol/peersharing"
 )
 
@@ -34,6 +38,38 @@ func (n *Node) peersharingShareRequest(
 	ctx opeersharing.CallbackContext,
 	amount int,
 ) ([]opeersharing.PeerAddress, error) {
-	// TODO: add hooks for getting peers to share
-	return []opeersharing.PeerAddress{}, nil
+	peers := []opeersharing.PeerAddress{}
+	var cnt int
+	for _, peer := range n.outboundConns {
+		cnt++
+		if cnt > amount {
+			break
+		}
+		if cnt > len(n.outboundConns) {
+			break
+		}
+		if peer.sharable {
+			host, port, err := net.SplitHostPort(peer.Address)
+			if err != nil {
+				// Skip on error
+				n.config.logger.Debug("failed to split peer address, skipping")
+				continue
+			}
+			portNum, err := strconv.ParseUint(port, 10, 16)
+			if err != nil {
+				// Skip on error
+				n.config.logger.Debug("failed to parse peer port, skipping")
+				continue
+			}
+			n.config.logger.Debug(
+				fmt.Sprintf("adding peer for sharing: %s", peer.Address),
+			)
+			peers = append(peers, opeersharing.PeerAddress{
+				IP:   net.ParseIP(host),
+				Port: uint16(portNum),
+			},
+			)
+		}
+	}
+	return peers, nil
 }

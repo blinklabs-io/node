@@ -51,20 +51,32 @@ func DecodePParamsUpdateBabbage(data []byte) (any, error) {
 func PParamsUpdateBabbage(currentPParams any, pparamsUpdate any) (any, error) {
 	babbagePParams, ok := currentPParams.(babbage.BabbageProtocolParameters)
 	if !ok {
-		return nil, fmt.Errorf("current PParams (%T) is not expected type", currentPParams)
+		return nil, fmt.Errorf(
+			"current PParams (%T) is not expected type",
+			currentPParams,
+		)
 	}
 	babbagePParamsUpdate, ok := pparamsUpdate.(babbage.BabbageProtocolParameterUpdate)
 	if !ok {
-		return nil, fmt.Errorf("PParams update (%T) is not expected type", pparamsUpdate)
+		return nil, fmt.Errorf(
+			"PParams update (%T) is not expected type",
+			pparamsUpdate,
+		)
 	}
 	babbagePParams.Update(&babbagePParamsUpdate)
 	return babbagePParams, nil
 }
 
-func HardForkBabbage(nodeConfig *cardano.CardanoNodeConfig, prevPParams any) (any, error) {
+func HardForkBabbage(
+	nodeConfig *cardano.CardanoNodeConfig,
+	prevPParams any,
+) (any, error) {
 	alonzoPParams, ok := prevPParams.(alonzo.AlonzoProtocolParameters)
 	if !ok {
-		return nil, fmt.Errorf("previous PParams (%T) are not expected type", prevPParams)
+		return nil, fmt.Errorf(
+			"previous PParams (%T) are not expected type",
+			prevPParams,
+		)
 	}
 	ret := babbage.UpgradePParams(alonzoPParams)
 	return ret, nil

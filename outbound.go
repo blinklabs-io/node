@@ -40,6 +40,7 @@ type outboundPeer struct {
 	Address        string
 	ReconnectCount int
 	ReconnectDelay time.Duration
+	sharable       bool
 }
 
 func (n *Node) startOutboundConnections() {
@@ -48,7 +49,7 @@ func (n *Node) startOutboundConnections() {
 		"component", "network",
 		"role", "client",
 	)
-	var tmpHosts []string
+	var tmpPeers []outboundPeer
 	for _, host := range n.config.topologyConfig.BootstrapPeers {
 		n.config.logger.Debug(
 			fmt.Sprintf(
@@ -59,9 +60,14 @@ func (n *Node) startOutboundConnections() {
 			"component", "network",
 			"role", "client",
 		)
-		tmpHosts = append(
-			tmpHosts,
-			net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))),
+		tmpPeers = append(
+			tmpPeers,
+			outboundPeer{
+				Address: net.JoinHostPort(
+					host.Address,
+					strconv.Itoa(int(host.Port)),
+				),
+			},
 		)
 	}
 	for _, localRoot := range n.config.topologyConfig.LocalRoots {
@@ -75,9 +81,15 @@ func (n *Node) startOutboundConnections() {
 				"component", "network",
 				"role", "client",
 			)
-			tmpHosts = append(
-				tmpHosts,
-				net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))),
+			tmpPeers = append(
+				tmpPeers,
+				outboundPeer{
+					Address: net.JoinHostPort(
+						host.Address,
+						strconv.Itoa(int(host.Port)),
+					),
+					sharable: localRoot.Advertise,
+				},
 			)
 		}
 	}
@@ -92,15 +104,20 @@ func (n *Node) startOutboundConnections() {
 				"component", "network",
 				"role", "client",
 			)
-			tmpHosts = append(
-				tmpHosts,
-				net.JoinHostPort(host.Address, strconv.Itoa(int(host.Port))),
+			tmpPeers = append(
+				tmpPeers,
+				outboundPeer{
+					Address: net.JoinHostPort(
+						host.Address,
+						strconv.Itoa(int(host.Port)),
+					),
+					sharable: publicRoot.Advertise,
+				},
 			)
 		}
 	}
 	// Start outbound connections
-	for _, host := range tmpHosts {
-		tmpPeer := outboundPeer{Address: host}
+	for _, tmpPeer := range tmpPeers {
 		go func(peer outboundPeer) {
 			if err := n.createOutboundConnection(peer); err != nil {
 				n.config.logger.Error(

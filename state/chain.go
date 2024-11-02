@@ -86,7 +86,9 @@ func (ci *ChainIterator) Next(blocking bool) (*ChainIteratorResult, error) {
 		return nil, nil
 	}
 	// Wait for new block or a rollback
-	blockSubId, blockChan := ci.ls.config.EventBus.Subscribe(ChainBlockEventType)
+	blockSubId, blockChan := ci.ls.config.EventBus.Subscribe(
+		ChainBlockEventType,
+	)
 	rollbackSubId, rollbackChan := ci.ls.config.EventBus.Subscribe(
 		ChainRollbackEventType,
 	)
