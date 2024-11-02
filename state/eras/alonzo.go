@@ -51,20 +51,32 @@ func DecodePParamsUpdateAlonzo(data []byte) (any, error) {
 func PParamsUpdateAlonzo(currentPParams any, pparamsUpdate any) (any, error) {
 	alonzoPParams, ok := currentPParams.(alonzo.AlonzoProtocolParameters)
 	if !ok {
-		return nil, fmt.Errorf("current PParams (%T) is not expected type", currentPParams)
+		return nil, fmt.Errorf(
+			"current PParams (%T) is not expected type",
+			currentPParams,
+		)
 	}
 	alonzoPParamsUpdate, ok := pparamsUpdate.(alonzo.AlonzoProtocolParameterUpdate)
 	if !ok {
-		return nil, fmt.Errorf("PParams update (%T) is not expected type", pparamsUpdate)
+		return nil, fmt.Errorf(
+			"PParams update (%T) is not expected type",
+			pparamsUpdate,
+		)
 	}
 	alonzoPParams.Update(&alonzoPParamsUpdate)
 	return alonzoPParams, nil
 }
 
-func HardForkAlonzo(nodeConfig *cardano.CardanoNodeConfig, prevPParams any) (any, error) {
+func HardForkAlonzo(
+	nodeConfig *cardano.CardanoNodeConfig,
+	prevPParams any,
+) (any, error) {
 	maryPParams, ok := prevPParams.(mary.MaryProtocolParameters)
 	if !ok {
-		return nil, fmt.Errorf("previous PParams (%T) are not expected type", prevPParams)
+		return nil, fmt.Errorf(
+			"previous PParams (%T) are not expected type",
+			prevPParams,
+		)
 	}
 	ret := alonzo.UpgradePParams(maryPParams)
 	alonzoGenesis, err := nodeConfig.AlonzoGenesis()

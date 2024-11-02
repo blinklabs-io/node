@@ -50,17 +50,26 @@ func DecodePParamsUpdateShelley(data []byte) (any, error) {
 func PParamsUpdateShelley(currentPParams any, pparamsUpdate any) (any, error) {
 	shelleyPParams, ok := currentPParams.(shelley.ShelleyProtocolParameters)
 	if !ok {
-		return nil, fmt.Errorf("current PParams (%T) is not expected type", currentPParams)
+		return nil, fmt.Errorf(
+			"current PParams (%T) is not expected type",
+			currentPParams,
+		)
 	}
 	shelleyPParamsUpdate, ok := pparamsUpdate.(shelley.ShelleyProtocolParameterUpdate)
 	if !ok {
-		return nil, fmt.Errorf("PParams update (%T) is not expected type", pparamsUpdate)
+		return nil, fmt.Errorf(
+			"PParams update (%T) is not expected type",
+			pparamsUpdate,
+		)
 	}
 	shelleyPParams.Update(&shelleyPParamsUpdate)
 	return shelleyPParams, nil
 }
 
-func HardForkShelley(nodeConfig *cardano.CardanoNodeConfig, prevPParams any) (any, error) {
+func HardForkShelley(
+	nodeConfig *cardano.CardanoNodeConfig,
+	prevPParams any,
+) (any, error) {
 	// There's no Byron protocol parameters to upgrade from, so this is mostly
 	// a dummy call for consistency
 	ret := shelley.UpgradePParams(nil)

@@ -87,7 +87,10 @@ func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
 		}
 	}
 	// Setup event handlers
-	ls.config.EventBus.SubscribeFunc(ChainsyncEventType, ls.handleEventChainSync)
+	ls.config.EventBus.SubscribeFunc(
+		ChainsyncEventType,
+		ls.handleEventChainSync,
+	)
 	// Schedule periodic process to purge consumed UTxOs outside of the rollback window
 	ls.scheduleCleanupConsumedUtxos()
 	// TODO: schedule process to scan/clean blob DB for keys that don't have a corresponding metadata DB entry
@@ -325,7 +328,10 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 		) {
 			// Check for pparam updates that apply at the end of the epoch
 			var pparamUpdates []models.PParamUpdate
-			result := txn.Metadata().Where("epoch = ?", ls.currentEpoch.EpochId).Order("id DESC").Find(&pparamUpdates)
+			result := txn.Metadata().
+				Where("epoch = ?", ls.currentEpoch.EpochId).
+				Order("id DESC").
+				Find(&pparamUpdates)
 			if result.Error != nil {
 				return result.Error
 			}
@@ -333,13 +339,18 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 				// We only want the latest for the epoch
 				pparamUpdate := pparamUpdates[0]
 				if eras.Eras[ls.currentEraId].DecodePParamsUpdateFunc != nil {
-					tmpPParamUpdate, err := eras.Eras[ls.currentEraId].DecodePParamsUpdateFunc(pparamUpdate.Cbor)
+					tmpPParamUpdate, err := eras.Eras[ls.currentEraId].DecodePParamsUpdateFunc(
+						pparamUpdate.Cbor,
+					)
 					if err != nil {
 						return err
 					}
 					if eras.Eras[ls.currentEraId].PParamsUpdateFunc != nil {
 						// Update current pparams
-						newPParams, err := eras.Eras[ls.currentEraId].PParamsUpdateFunc(ls.currentPParams, tmpPParamUpdate)
+						newPParams, err := eras.Eras[ls.currentEraId].PParamsUpdateFunc(
+							ls.currentPParams,
+							tmpPParamUpdate,
+						)
 						if err != nil {
 							return err
 						}
@@ -403,7 +414,10 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 				if nextEra.HardForkFunc != nil {
 					// Perform hard fork
 					// This generally means upgrading pparams from previous era
-					newPParams, err := nextEra.HardForkFunc(ls.config.CardanoNodeConfig, ls.currentPParams)
+					newPParams, err := nextEra.HardForkFunc(
+						ls.config.CardanoNodeConfig,
+						ls.currentPParams,
+					)
 					if err != nil {
 						return err
 					}
@@ -592,7 +606,9 @@ func (ls *LedgerState) loadPParams() error {
 		}
 		return result.Error
 	}
-	currentPParams, err := eras.Eras[ls.currentEraId].DecodePParamsFunc(tmpPParams.Cbor)
+	currentPParams, err := eras.Eras[ls.currentEraId].DecodePParamsFunc(
+		tmpPParams.Cbor,
+	)
 	if err != nil {
 		return err
 	}

@@ -51,20 +51,32 @@ func DecodePParamsUpdateMary(data []byte) (any, error) {
 func PParamsUpdateMary(currentPParams any, pparamsUpdate any) (any, error) {
 	maryPParams, ok := currentPParams.(mary.MaryProtocolParameters)
 	if !ok {
-		return nil, fmt.Errorf("current PParams (%T) is not expected type", currentPParams)
+		return nil, fmt.Errorf(
+			"current PParams (%T) is not expected type",
+			currentPParams,
+		)
 	}
 	maryPParamsUpdate, ok := pparamsUpdate.(mary.MaryProtocolParameterUpdate)
 	if !ok {
-		return nil, fmt.Errorf("PParams update (%T) is not expected type", pparamsUpdate)
+		return nil, fmt.Errorf(
+			"PParams update (%T) is not expected type",
+			pparamsUpdate,
+		)
 	}
 	maryPParams.Update(&maryPParamsUpdate)
 	return maryPParams, nil
 }
 
-func HardForkMary(nodeConfig *cardano.CardanoNodeConfig, prevPParams any) (any, error) {
+func HardForkMary(
+	nodeConfig *cardano.CardanoNodeConfig,
+	prevPParams any,
+) (any, error) {
 	allegraPParams, ok := prevPParams.(allegra.AllegraProtocolParameters)
 	if !ok {
-		return nil, fmt.Errorf("previous PParams (%T) are not expected type", prevPParams)
+		return nil, fmt.Errorf(
+			"previous PParams (%T) are not expected type",
+			prevPParams,
+		)
 	}
 	ret := mary.UpgradePParams(allegraPParams)
 	return ret, nil

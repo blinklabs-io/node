@@ -51,20 +51,32 @@ func DecodePParamsUpdateAllegra(data []byte) (any, error) {
 func PParamsUpdateAllegra(currentPParams any, pparamsUpdate any) (any, error) {
 	allegraPParams, ok := currentPParams.(allegra.AllegraProtocolParameters)
 	if !ok {
-		return nil, fmt.Errorf("current PParams (%T) is not expected type", currentPParams)
+		return nil, fmt.Errorf(
+			"current PParams (%T) is not expected type",
+			currentPParams,
+		)
 	}
 	allegraPParamsUpdate, ok := pparamsUpdate.(allegra.AllegraProtocolParameterUpdate)
 	if !ok {
-		return nil, fmt.Errorf("PParams update (%T) is not expected type", pparamsUpdate)
+		return nil, fmt.Errorf(
+			"PParams update (%T) is not expected type",
+			pparamsUpdate,
+		)
 	}
 	allegraPParams.Update(&allegraPParamsUpdate)
 	return allegraPParams, nil
 }
 
-func HardForkAllegra(nodeConfig *cardano.CardanoNodeConfig, prevPParams any) (any, error) {
+func HardForkAllegra(
+	nodeConfig *cardano.CardanoNodeConfig,
+	prevPParams any,
+) (any, error) {
 	shelleyPParams, ok := prevPParams.(shelley.ShelleyProtocolParameters)
 	if !ok {
-		return nil, fmt.Errorf("previous PParams (%T) are not expected type", prevPParams)
+		return nil, fmt.Errorf(
+			"previous PParams (%T) are not expected type",
+			prevPParams,
+		)
 	}
 	ret := allegra.UpgradePParams(shelleyPParams)
 	return ret, nil
