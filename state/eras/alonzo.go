@@ -30,6 +30,7 @@ var AlonzoEraDesc = EraDesc{
 	DecodePParamsUpdateFunc: DecodePParamsUpdateAlonzo,
 	PParamsUpdateFunc:       PParamsUpdateAlonzo,
 	HardForkFunc:            HardForkAlonzo,
+	EpochLengthFunc:         EpochLengthShelley,
 }
 
 func DecodePParamsAlonzo(data []byte) (any, error) {

@@ -23,6 +23,7 @@ type EraDesc struct {
 	DecodePParamsUpdateFunc func([]byte) (any, error)
 	PParamsUpdateFunc       func(any, any) (any, error)
 	HardForkFunc            func(*cardano.CardanoNodeConfig, any) (any, error)
+	EpochLengthFunc         func(*cardano.CardanoNodeConfig) (uint, uint, error)
 }
 
 var Eras = []EraDesc{

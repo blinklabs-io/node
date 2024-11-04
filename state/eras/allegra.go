@@ -30,6 +30,7 @@ var AllegraEraDesc = EraDesc{
 	DecodePParamsUpdateFunc: DecodePParamsUpdateAllegra,
 	PParamsUpdateFunc:       PParamsUpdateAllegra,
 	HardForkFunc:            HardForkAllegra,
+	EpochLengthFunc:         EpochLengthShelley,
 }
 
 func DecodePParamsAllegra(data []byte) (any, error) {

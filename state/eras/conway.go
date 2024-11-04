@@ -30,6 +30,7 @@ var ConwayEraDesc = EraDesc{
 	DecodePParamsUpdateFunc: DecodePParamsUpdateConway,
 	PParamsUpdateFunc:       PParamsUpdateConway,
 	HardForkFunc:            HardForkConway,
+	EpochLengthFunc:         EpochLengthShelley,
 }
 
 func DecodePParamsConway(data []byte) (any, error) {

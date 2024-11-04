@@ -14,9 +14,23 @@
 
 package eras
 
-import "github.com/blinklabs-io/gouroboros/ledger/byron"
+import (
+	"github.com/blinklabs-io/gouroboros/ledger/byron"
+	"github.com/blinklabs-io/node/config/cardano"
+)
 
 var ByronEraDesc = EraDesc{
-	Id:   byron.EraIdByron,
-	Name: byron.EraNameByron,
+	Id:              byron.EraIdByron,
+	Name:            byron.EraNameByron,
+	EpochLengthFunc: EpochLengthByron,
+}
+
+func EpochLengthByron(nodeConfig *cardano.CardanoNodeConfig) (uint, uint, error) {
+	byronGenesis, err := nodeConfig.ByronGenesis()
+	if err != nil {
+		return 0, 0, err
+	}
+	return uint(byronGenesis.BlockVersionData.SlotDuration),
+		uint(byronGenesis.ProtocolConsts.K * 10),
+		nil
 }

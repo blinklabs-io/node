@@ -30,6 +30,7 @@ var BabbageEraDesc = EraDesc{
 	DecodePParamsUpdateFunc: DecodePParamsUpdateBabbage,
 	PParamsUpdateFunc:       PParamsUpdateBabbage,
 	HardForkFunc:            HardForkBabbage,
+	EpochLengthFunc:         EpochLengthShelley,
 }
 
 func DecodePParamsBabbage(data []byte) (any, error) {
