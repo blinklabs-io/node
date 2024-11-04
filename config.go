@@ -79,6 +79,19 @@ func (n *Node) configValidate() error {
 			"listener must provide net.Listener or listen network/address values",
 		)
 	}
+	if n.config.cardanoNodeConfig != nil {
+		shelleyGenesis, err := n.config.cardanoNodeConfig.ShelleyGenesis()
+		if err != nil {
+			return err
+		}
+		if n.config.networkMagic != shelleyGenesis.NetworkMagic {
+			return fmt.Errorf(
+				"network magic (%d) doesn't match value from Shelley genesis (%d)",
+				n.config.networkMagic,
+				shelleyGenesis.NetworkMagic,
+			)
+		}
+	}
 	return nil
 }
 
