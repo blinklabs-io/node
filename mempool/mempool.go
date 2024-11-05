@@ -84,6 +84,8 @@ func NewMempool(
 		// Create logger to throw away logs
 		// We do this so we don't have to add guards around every log operation
 		m.logger = slog.New(slog.NewJSONHandler(io.Discard, nil))
+	} else {
+		m.logger = logger
 	}
 	// TODO: replace this with purging based on on-chain TXs
 	// Schedule initial mempool expired cleanup
