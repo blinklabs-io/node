@@ -112,10 +112,7 @@ func (n *Node) chainsyncServerFindIntersect(
 	}
 
 	// Populate return tip
-	retTip, err = n.ledgerState.Tip()
-	if err != nil {
-		return retPoint, retTip, err
-	}
+	retTip = n.ledgerState.Tip()
 
 	if intersectPoint == nil {
 		return retPoint, retTip, ochainsync.IntersectNotFoundError
@@ -142,10 +139,7 @@ func (n *Node) chainsyncServerRequestNext(
 	n.ledgerState.RLock()
 	defer n.ledgerState.RUnlock()
 	// Create/retrieve chainsync state for connection
-	tip, err := n.ledgerState.Tip()
-	if err != nil {
-		return err
-	}
+	tip := n.ledgerState.Tip()
 	clientState, err := n.chainsyncState.AddClient(
 		ctx.ConnectionId,
 		tip.Point,
@@ -186,10 +180,7 @@ func (n *Node) chainsyncServerRequestNext(
 		if next == nil {
 			return
 		}
-		tip, err := n.ledgerState.Tip()
-		if err != nil {
-			return
-		}
+		tip := n.ledgerState.Tip()
 		_ = ctx.Server.RollForward(
 			next.Block.Type,
 			next.Block.Cbor,

@@ -55,6 +55,7 @@ type LedgerState struct {
 	currentPParams            any
 	currentEpoch              models.Epoch
 	currentEra                eras.EraDesc
+	currentTip                ochainsync.Tip
 }
 
 func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
@@ -101,6 +102,10 @@ func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
 	if err := ls.loadPParams(); err != nil {
 		return nil, err
 	}
+	// Load current tip
+	if err := ls.loadTip(); err != nil {
+		return nil, err
+	}
 	return ls, nil
 }
 
@@ -121,20 +126,12 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 				ls.scheduleCleanupConsumedUtxos()
 			}()
 			// Get the current tip, since we're querying by slot
-			tip, err := ls.Tip()
-			if err != nil {
-				ls.config.Logger.Error(
-					"failed to get tip",
-					"component", "ledger",
-					"error", err,
-				)
-				return
-			}
+			tip := ls.Tip()
 			for {
 				// Perform updates in a transaction
 				batchDone := false
 				txn := ls.db.Transaction(true)
-				err = txn.Do(func(txn *database.Txn) error {
+				err := txn.Do(func(txn *database.Txn) error {
 					// Get UTxOs that are marked as deleted and older than our slot window
 					var tmpUtxos []models.Utxo
 					result := txn.Metadata().
@@ -590,6 +587,11 @@ func (ls *LedgerState) addBlock(txn *database.Txn, block models.Block) error {
 	if result := txn.Metadata().Create(&block); result.Error != nil {
 		return result.Error
 	}
+	// Update tip
+	ls.currentTip = ochainsync.Tip{
+		Point:       ocommon.NewPoint(block.Slot, block.Hash),
+		BlockNumber: block.Number,
+	}
 	return nil
 }
 
@@ -606,6 +608,11 @@ func (ls *LedgerState) removeBlock(
 	err := txn.Blob().Delete(key)
 	if err != nil {
 		return err
+	}
+	// Update tip
+	ls.currentTip = ochainsync.Tip{
+		Point:       ocommon.NewPoint(block.Slot, block.Hash),
+		BlockNumber: block.Number,
 	}
 	return nil
 }
@@ -638,6 +645,26 @@ func (ls *LedgerState) loadEpoch() error {
 	}
 	ls.currentEpoch = tmpEpoch
 	ls.currentEra = eras.Eras[tmpEpoch.EraId]
+	return nil
+}
+
+func (ls *LedgerState) loadTip() error {
+	var tmpBlock models.Block
+	result := ls.db.Metadata().Order("number DESC").First(&tmpBlock)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			// Return origin when we have no blocks
+			ls.currentTip = ochainsync.Tip{
+				Point: ocommon.NewPointOrigin(),
+			}
+			return nil
+		}
+		return result.Error
+	}
+	ls.currentTip = ochainsync.Tip{
+		Point:       ocommon.NewPoint(tmpBlock.Slot, tmpBlock.Hash),
+		BlockNumber: tmpBlock.Number,
+	}
 	return nil
 }
 
@@ -674,13 +701,10 @@ func (ls *LedgerState) RecentChainPoints(count int) ([]ocommon.Point, error) {
 func (ls *LedgerState) GetIntersectPoint(
 	points []ocommon.Point,
 ) (*ocommon.Point, error) {
-	tip, err := ls.Tip()
-	if err != nil {
-		return nil, err
-	}
+	tip := ls.Tip()
 	var ret ocommon.Point
 	txn := ls.db.Transaction(false)
-	err = txn.Do(func(txn *database.Txn) error {
+	err := txn.Do(func(txn *database.Txn) error {
 		for _, point := range points {
 			// Ignore points with a slot later than our current tip
 			if point.Slot > tip.Point.Slot {
@@ -723,25 +747,8 @@ func (ls *LedgerState) GetChainFromPoint(
 }
 
 // Tip returns the current chain tip
-func (ls *LedgerState) Tip() (ochainsync.Tip, error) {
-	var ret ochainsync.Tip
-	var tmpBlock models.Block
-	result := ls.db.Metadata().Order("number DESC").First(&tmpBlock)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			// Return dummy data when we have no blocks
-			ret = ochainsync.Tip{
-				Point: ocommon.NewPointOrigin(),
-			}
-			return ret, nil
-		}
-		return ret, result.Error
-	}
-	ret = ochainsync.Tip{
-		Point:       ocommon.NewPoint(tmpBlock.Slot, tmpBlock.Hash),
-		BlockNumber: tmpBlock.Number,
-	}
-	return ret, nil
+func (ls *LedgerState) Tip() ochainsync.Tip {
+	return ls.currentTip
 }
 
 // UtxoByRef returns a single UTxO by reference
