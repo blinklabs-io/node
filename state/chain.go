@@ -40,8 +40,6 @@ func newChainIterator(
 	startPoint ocommon.Point,
 	inclusive bool,
 ) (*ChainIterator, error) {
-	ls.RLock()
-	defer ls.RUnlock()
 	// Lookup start block in metadata DB
 	tmpBlock, err := models.BlockByPoint(ls.db, startPoint)
 	if err != nil {
@@ -79,6 +77,14 @@ func (ci *ChainIterator) Next(blocking bool) (*ChainIteratorResult, error) {
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		ci.ls.RUnlock()
 		return ret, err
+	}
+	// Check against current tip to see if it was rolled back
+	tip := ci.ls.Tip()
+	if ci.blockNumber-1 > tip.BlockNumber {
+		ret.Point = tip.Point
+		ret.Rollback = true
+		ci.ls.RUnlock()
+		return ret, nil
 	}
 	// Return immediately if we're not blocking
 	if !blocking {
