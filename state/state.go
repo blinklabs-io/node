@@ -69,16 +69,42 @@ func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
 	}
 	if cfg.DataDir == "" {
 		db, err := database.NewInMemory(ls.config.Logger)
-		if err != nil {
-			return nil, err
-		}
 		ls.db = db
+		if err != nil {
+			if _, ok := err.(database.CommitTimestampError); !ok {
+				return nil, err
+			}
+			ls.config.Logger.Warn(
+				"database initialization error",
+				"error",
+				err,
+				"component",
+				"ledger",
+			)
+			// Run recovery
+			if err := ls.recoverCommitTimestampConflict(); err != nil {
+				return nil, err
+			}
+		}
 	} else {
 		db, err := database.NewPersistent(cfg.DataDir, cfg.Logger)
-		if err != nil {
-			return nil, err
-		}
 		ls.db = db
+		if err != nil {
+			if _, ok := err.(database.CommitTimestampError); !ok {
+				return nil, err
+			}
+			ls.config.Logger.Warn(
+				"database initialization error",
+				"error",
+				err,
+				"component",
+				"ledger",
+			)
+			// Run recovery
+			if err := ls.recoverCommitTimestampConflict(); err != nil {
+				return nil, err
+			}
+		}
 	}
 	// Create the table schemas
 	for _, model := range models.MigrateModels {
@@ -107,6 +133,32 @@ func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
 		return nil, err
 	}
 	return ls, nil
+}
+
+func (ls *LedgerState) recoverCommitTimestampConflict() error {
+	// Try to load last n blocks and rollback to the last one we can load
+	var tmpBlocks []models.Block
+	result := ls.db.Metadata().Order("id DESC").Limit(100).Find(&tmpBlocks)
+	if result.Error != nil {
+		return result.Error
+	}
+	for _, tmpBlock := range tmpBlocks {
+		blockPoint := ocommon.NewPoint(
+			tmpBlock.Slot,
+			tmpBlock.Hash,
+		)
+		// Load individual block to also (attempt to) load CBOR
+		if _, err := models.BlockByPoint(ls.db, blockPoint); err == nil {
+			if err2 := ls.rollback(blockPoint); err2 != nil {
+				return fmt.Errorf(
+					"failed to rollback: %s",
+					err2,
+				)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("failed to recover database")
 }
 
 func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
@@ -209,13 +261,17 @@ func (ls *LedgerState) handleEventChainSync(evt event.Event) {
 }
 
 func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
+	return ls.rollback(e.Point)
+}
+
+func (ls *LedgerState) rollback(point ocommon.Point) error {
 	// Start a transaction
 	txn := ls.db.Transaction(true)
 	err := txn.Do(func(txn *database.Txn) error {
 		// Remove rolled-back blocks in reverse order
 		var tmpBlocks []models.Block
 		result := txn.Metadata().
-			Where("slot > ?", e.Point.Slot).
+			Where("slot > ?", point.Slot).
 			Order("slot DESC").
 			Find(&tmpBlocks)
 		if result.Error != nil {
@@ -229,19 +285,21 @@ func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
 		// Delete rolled-back UTxOs
 		var tmpUtxos []models.Utxo
 		result = txn.Metadata().
-			Where("added_slot > ?", e.Point.Slot).
+			Where("added_slot > ?", point.Slot).
 			Order("id DESC").
 			Find(&tmpUtxos)
 		if result.Error != nil {
-			return fmt.Errorf("remove rolled-backup UTxOs: %w", result.Error)
+			return fmt.Errorf("remove rolled-back UTxOs: %w", result.Error)
 		}
-		if err := models.UtxosDeleteTxn(txn, tmpUtxos); err != nil {
-			return fmt.Errorf("remove rolled-back UTxOs: %w", err)
+		if len(tmpUtxos) > 0 {
+			if err := models.UtxosDeleteTxn(txn, tmpUtxos); err != nil {
+				return fmt.Errorf("remove rolled-back UTxOs: %w", err)
+			}
 		}
 		// Restore spent UTxOs
 		result = txn.Metadata().
 			Model(models.Utxo{}).
-			Where("deleted_slot > ?", e.Point.Slot).
+			Where("deleted_slot > ?", point.Slot).
 			Update("deleted_slot", 0)
 		if result.Error != nil {
 			return fmt.Errorf(
@@ -260,15 +318,15 @@ func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
 		event.NewEvent(
 			ChainRollbackEventType,
 			ChainRollbackEvent{
-				Point: e.Point,
+				Point: point,
 			},
 		),
 	)
 	ls.config.Logger.Info(
 		fmt.Sprintf(
 			"chain rolled back, new tip: %x at slot %d",
-			e.Point.Hash,
-			e.Point.Slot,
+			point.Hash,
+			point.Slot,
 		),
 		"component",
 		"ledger",

@@ -38,6 +38,19 @@ func (CommitTimestamp) TableName() string {
 	return "commit_timestamp"
 }
 
+type CommitTimestampError struct {
+	MetadataTimestamp int64
+	BlobTimestamp     int64
+}
+
+func (e CommitTimestampError) Error() string {
+	return fmt.Sprintf(
+		"commit timestamp mismatch: %d (metadata) != %d (blob)",
+		e.MetadataTimestamp,
+		e.BlobTimestamp,
+	)
+}
+
 func (b *BaseDatabase) checkCommitTimestamp() error {
 	// Create table if it doesn't exist
 	if err := b.Metadata().AutoMigrate(&CommitTimestamp{}); err != nil {
@@ -66,11 +79,10 @@ func (b *BaseDatabase) checkCommitTimestamp() error {
 		tmpTimestamp := new(big.Int).SetBytes(val).Int64()
 		// Compare values
 		if tmpTimestamp != tmpCommitTimestamp.Timestamp {
-			return fmt.Errorf(
-				"commit timestamp mismatch: %d (metadata) != %d (blob)",
-				tmpCommitTimestamp.Timestamp,
-				tmpTimestamp,
-			)
+			return CommitTimestampError{
+				MetadataTimestamp: tmpCommitTimestamp.Timestamp,
+				BlobTimestamp:     tmpTimestamp,
+			}
 		}
 		return nil
 	})

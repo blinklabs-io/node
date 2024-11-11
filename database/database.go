@@ -73,14 +73,14 @@ func (b *BaseDatabase) init() error {
 	}
 	// Configure metrics for Badger DB
 	b.registerBadgerMetrics()
-	// Check commit timestamp
-	if err := b.checkCommitTimestamp(); err != nil {
-		return err
-	}
 	// Run GC periodically for Badger DB
 	if b.blobGcEnabled {
 		b.blobGcTimer = time.NewTicker(5 * time.Minute)
 		go b.blobGc()
+	}
+	// Check commit timestamp
+	if err := b.checkCommitTimestamp(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -141,7 +141,8 @@ func NewInMemory(logger *slog.Logger) (*InMemoryDatabase, error) {
 		},
 	}
 	if err := db.init(); err != nil {
-		return nil, err
+		// Database is available for recovery, so return it with error
+		return db, err
 	}
 	return db, nil
 }
@@ -204,7 +205,8 @@ func NewPersistent(
 		dataDir: dataDir,
 	}
 	if err := db.init(); err != nil {
-		return nil, err
+		// Database is available for recovery, so return it with error
+		return db, err
 	}
 	return db, nil
 }
