@@ -32,6 +32,7 @@ import (
 )
 
 type Database interface {
+	Close() error
 	Metadata() *gorm.DB
 	Blob() *badger.DB
 	Transaction(bool) *Txn
@@ -59,6 +60,23 @@ func (b *BaseDatabase) Blob() *badger.DB {
 // Transaction starts a new database transaction and returns a handle to it
 func (b *BaseDatabase) Transaction(readWrite bool) *Txn {
 	return NewTxn(b, readWrite)
+}
+
+// Close cleans up the database connections
+func (b *BaseDatabase) Close() error {
+	var err error
+	// Close metadata
+	sqlDB, sqlDBerr := b.metadata.DB()
+	if sqlDBerr != nil {
+		err = errors.Join(err, sqlDBerr)
+	} else {
+		metadataErr := sqlDB.Close()
+		err = errors.Join(err, metadataErr)
+	}
+	// Close blob
+	blobErr := b.blob.Close()
+	err = errors.Join(err, blobErr)
+	return err
 }
 
 func (b *BaseDatabase) init() error {

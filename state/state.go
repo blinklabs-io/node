@@ -161,6 +161,10 @@ func (ls *LedgerState) recoverCommitTimestampConflict() error {
 	return fmt.Errorf("failed to recover database")
 }
 
+func (ls *LedgerState) Close() error {
+	return ls.db.Close()
+}
+
 func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 	ls.Lock()
 	defer ls.Unlock()

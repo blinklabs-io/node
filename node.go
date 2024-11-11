@@ -121,6 +121,9 @@ func (n *Node) Stop() error {
 func (n *Node) shutdown() error {
 	ctx := context.TODO()
 	var err error
+	// Shutdown ledger
+	err = errors.Join(err, n.ledgerState.Close())
+	// Call shutdown functions
 	for _, fn := range n.shutdownFuncs {
 		err = errors.Join(err, fn(ctx))
 	}
