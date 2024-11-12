@@ -170,7 +170,9 @@ func (m *Mempool) removeExpired() {
 	m.Lock()
 	defer m.Unlock()
 	expiredBefore := time.Now().Add(-txsubmissionMempoolExpiration)
-	for _, tx := range m.transactions {
+	// We iterate backward to avoid issues with shifting indexes when deleting
+	for i := len(m.transactions) - 1; i >= 0; i-- {
+		tx := m.transactions[i]
 		if tx.LastSeen.Before(expiredBefore) {
 			m.removeTransaction(tx.Hash)
 			m.logger.Debug(
