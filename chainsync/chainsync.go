@@ -26,8 +26,6 @@ import (
 	"github.com/blinklabs-io/gouroboros/connection"
 	"github.com/blinklabs-io/gouroboros/ledger"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 type ChainsyncClientState struct {
@@ -42,32 +40,17 @@ type State struct {
 	ledgerState  *state.LedgerState
 	clients      map[ouroboros.ConnectionId]*ChainsyncClientState
 	clientConnId *ouroboros.ConnectionId // TODO: replace with handling of multiple chainsync clients
-	metrics      struct {
-		blockNum prometheus.Gauge
-		slotNum  prometheus.Gauge
-	}
 }
 
 func NewState(
 	eventBus *event.EventBus,
 	ledgerState *state.LedgerState,
-	promRegistry prometheus.Registerer,
 ) *State {
 	s := &State{
 		eventBus:    eventBus,
 		ledgerState: ledgerState,
 		clients:     make(map[ouroboros.ConnectionId]*ChainsyncClientState),
 	}
-	// Init metrics
-	promautoFactory := promauto.With(promRegistry)
-	s.metrics.blockNum = promautoFactory.NewGauge(prometheus.GaugeOpts{
-		Name: "cardano_node_metrics_blockNum_int",
-		Help: "current block number",
-	})
-	s.metrics.slotNum = promautoFactory.NewGauge(prometheus.GaugeOpts{
-		Name: "cardano_node_metrics_slotNum_int",
-		Help: "current slot number",
-	})
 	return s
 }
 
@@ -119,13 +102,6 @@ func (s *State) RemoveClientConnId(connId ouroboros.ConnectionId) {
 func (s *State) AddBlock(block ledger.Block, blockType uint) error {
 	s.Lock()
 	defer s.Unlock()
-	slotNumber := block.SlotNumber()
-	// TODO: figure out something for Byron. this won't work, since the
-	// block number isn't stored in the block itself
-	blockNumber := block.BlockNumber()
-	// Update metrics
-	s.metrics.blockNum.Set(float64(blockNumber))
-	s.metrics.slotNum.Set(float64(slotNumber))
 	// Generate event
 	blkHash, err := hex.DecodeString(block.Hash())
 	if err != nil {

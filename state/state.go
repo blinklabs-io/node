@@ -32,6 +32,7 @@ import (
 	"github.com/blinklabs-io/gouroboros/ledger"
 	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
+	"github.com/prometheus/client_golang/prometheus"
 	"gorm.io/gorm"
 )
 
@@ -45,6 +46,7 @@ type LedgerStateConfig struct {
 	DataDir           string
 	EventBus          *event.EventBus
 	CardanoNodeConfig *cardano.CardanoNodeConfig
+	PromRegistry      prometheus.Registerer
 }
 
 type LedgerState struct {
@@ -56,6 +58,7 @@ type LedgerState struct {
 	currentEpoch              models.Epoch
 	currentEra                eras.EraDesc
 	currentTip                ochainsync.Tip
+	metrics                   stateMetrics
 }
 
 func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
@@ -117,6 +120,8 @@ func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
 		ChainsyncEventType,
 		ls.handleEventChainSync,
 	)
+	// Init metrics
+	ls.metrics.init(ls.config.PromRegistry)
 	// Schedule periodic process to purge consumed UTxOs outside of the rollback window
 	ls.scheduleCleanupConsumedUtxos()
 	// TODO: schedule process to scan/clean blob DB for keys that don't have a corresponding metadata DB entry
@@ -416,6 +421,7 @@ func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
 				return result.Error
 			}
 			ls.currentEpoch = newEpoch
+			ls.metrics.epochNum.Set(float64(newEpoch.EpochId))
 			ls.config.Logger.Debug(
 				"added next epoch to DB",
 				"epoch", fmt.Sprintf("%+v", newEpoch),
@@ -654,6 +660,10 @@ func (ls *LedgerState) addBlock(txn *database.Txn, block models.Block) error {
 		Point:       ocommon.NewPoint(block.Slot, block.Hash),
 		BlockNumber: block.Number,
 	}
+	// Update metrics
+	ls.metrics.blockNum.Set(float64(block.Number))
+	ls.metrics.slotNum.Set(float64(block.Slot))
+	ls.metrics.slotInEpoch.Set(float64(block.Slot - ls.currentEpoch.StartSlot))
 	return nil
 }
 
@@ -707,6 +717,7 @@ func (ls *LedgerState) loadEpoch() error {
 	}
 	ls.currentEpoch = tmpEpoch
 	ls.currentEra = eras.Eras[tmpEpoch.EraId]
+	ls.metrics.epochNum.Set(float64(ls.currentEpoch.EpochId))
 	return nil
 }
 
