@@ -78,6 +78,7 @@ func (n *Node) Run() error {
 			EventBus:          n.eventBus,
 			Logger:            n.config.logger,
 			CardanoNodeConfig: n.config.cardanoNodeConfig,
+			PromRegistry:      n.config.promRegistry,
 		},
 	)
 	if err != nil {
@@ -88,7 +89,6 @@ func (n *Node) Run() error {
 	n.chainsyncState = chainsync.NewState(
 		n.eventBus,
 		n.ledgerState,
-		n.config.promRegistry,
 	)
 	// Configure connection manager
 	n.connManager = connmanager.NewConnectionManager(
