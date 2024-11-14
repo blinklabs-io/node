@@ -42,6 +42,8 @@ func (n *Node) chainsyncClientConnOpts() []ochainsync.ChainSyncOptionFunc {
 	return []ochainsync.ChainSyncOptionFunc{
 		ochainsync.WithRollForwardFunc(n.chainsyncClientRollForward),
 		ochainsync.WithRollBackwardFunc(n.chainsyncClientRollBackward),
+		// Enable pipelining of RequestNext messages to speed up chainsync
+		ochainsync.WithPipelineLimit(10),
 	}
 }
 
@@ -78,23 +80,7 @@ func (n *Node) chainsyncClientStart(connId ouroboros.ConnectionId) error {
 			)
 		}
 	}
-	// Determine available block range between intersect point(s) and current tip
-	bulkRangeStart, bulkRangeEnd, err := oConn.ChainSync().Client.GetAvailableBlockRange(
-		intersectPoints,
-	)
-	if err != nil {
-		return err
-	}
-	if bulkRangeStart.Slot == 0 && bulkRangeEnd.Slot == 0 {
-		// We're already at chain tip, so start a normal sync
-		return oConn.ChainSync().Client.Sync(intersectPoints)
-	}
-	// Use BlockFetch to request the entire available block range at once
-	n.chainsyncBulkRangeEnd = bulkRangeEnd
-	if err := oConn.BlockFetch().Client.GetBlockRange(bulkRangeStart, bulkRangeEnd); err != nil {
-		return err
-	}
-	return nil
+	return oConn.ChainSync().Client.Sync(intersectPoints)
 }
 
 func (n *Node) chainsyncServerFindIntersect(
@@ -195,12 +181,18 @@ func (n *Node) chainsyncClientRollBackward(
 	point ocommon.Point,
 	tip ochainsync.Tip,
 ) error {
-	if err := n.chainsyncState.Rollback(
-		point.Slot,
-		hex.EncodeToString(point.Hash),
-	); err != nil {
-		return err
-	}
+	// Generate event
+	n.eventBus.Publish(
+		state.ChainsyncEventType,
+		event.NewEvent(
+			state.ChainsyncEventType,
+			state.ChainsyncEvent{
+				Rollback: true,
+				Point:    point,
+				Tip:      tip,
+			},
+		),
+	)
 	return nil
 }
 
@@ -210,14 +202,10 @@ func (n *Node) chainsyncClientRollForward(
 	blockData interface{},
 	tip ochainsync.Tip,
 ) error {
-	var blk ledger.Block
 	switch v := blockData.(type) {
-	case ledger.Block:
-		blk = v
 	case ledger.BlockHeader:
 		blockSlot := v.SlotNumber()
 		blockHash, _ := hex.DecodeString(v.Hash())
-		// Publish event
 		n.eventBus.Publish(
 			state.ChainsyncEventType,
 			event.NewEvent(
@@ -227,25 +215,12 @@ func (n *Node) chainsyncClientRollForward(
 					Point:        ocommon.NewPoint(blockSlot, blockHash),
 					Type:         blockType,
 					BlockHeader:  v,
+					Tip:          tip,
 				},
 			),
 		)
-		// Fetch block content via block-fetch
-		conn := n.connManager.GetConnectionById(ctx.ConnectionId)
-		if conn == nil {
-			return fmt.Errorf("failed to lookup connection ID: %s", ctx.ConnectionId.String())
-		}
-		oConn := conn.Conn
-		tmpBlock, err := oConn.BlockFetch().Client.GetBlock(ocommon.Point{Slot: blockSlot, Hash: blockHash})
-		if err != nil {
-			return err
-		}
-		blk = tmpBlock
 	default:
 		return fmt.Errorf("unexpected block data type: %T", v)
-	}
-	if err := n.chainsyncState.AddBlock(blk, blockType); err != nil {
-		return err
 	}
 	return nil
 }

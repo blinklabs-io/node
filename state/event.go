@@ -15,11 +15,13 @@
 package state
 
 import (
-	ouroboros "github.com/blinklabs-io/gouroboros"
-	"github.com/blinklabs-io/gouroboros/ledger"
-	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 	"github.com/blinklabs-io/node/event"
 	"github.com/blinklabs-io/node/state/models"
+
+	ouroboros "github.com/blinklabs-io/gouroboros"
+	"github.com/blinklabs-io/gouroboros/ledger"
+	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
+	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 )
 
 const (
@@ -37,17 +39,28 @@ type ChainRollbackEvent struct {
 }
 
 const (
-	ChainsyncEventType event.EventType = "chainsync.event"
+	BlockfetchEventType event.EventType = "blockfetch.event"
+	ChainsyncEventType  event.EventType = "chainsync.event"
 )
+
+// BlockfetchEvent represents either a Block or BatchDone blockfetch event. We use
+// a single event type for both to make synchronization easier.
+type BlockfetchEvent struct {
+	ConnectionId ouroboros.ConnectionId // Connection ID associated with event
+	Point        ocommon.Point          // Chain point for block
+	Block        ledger.Block
+	Type         uint // Block type ID
+	BatchDone    bool // Set to true for a BatchDone event
+}
 
 // ChainsyncEvent represents either a RollForward or RollBackward chainsync event.
 // We use a single event type for both to make synchronization easier.
 type ChainsyncEvent struct {
-	ConnectionId ouroboros.ConnectionId
-	Point        ocommon.Point
+	ConnectionId ouroboros.ConnectionId // Connection ID associated with event
+	Point        ocommon.Point          // Chain point for roll forward/backward
+	Tip          ochainsync.Tip         // Upstream chain tip
 	BlockNumber  uint64
-	Block        ledger.Block
 	BlockHeader  ledger.BlockHeader
-	Type         uint
+	Type         uint // Block or header type ID
 	Rollback     bool
 }
