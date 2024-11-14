@@ -72,6 +72,16 @@ func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
 	}
 	if cfg.DataDir == "" {
 		db, err := database.NewInMemory(ls.config.Logger)
+		if db == nil {
+			ls.config.Logger.Error(
+				"failed to create database",
+				"error",
+				"empty database returned",
+				"component",
+				"ledger",
+			)
+			return nil, fmt.Errorf("empty database returned")
+		}
 		ls.db = db
 		if err != nil {
 			if _, ok := err.(database.CommitTimestampError); !ok {
@@ -91,6 +101,16 @@ func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
 		}
 	} else {
 		db, err := database.NewPersistent(cfg.DataDir, cfg.Logger)
+		if db == nil {
+			ls.config.Logger.Error(
+				"failed to create database",
+				"error",
+				"empty database returned",
+				"component",
+				"ledger",
+			)
+			return nil, fmt.Errorf("empty database returned")
+		}
 		ls.db = db
 		if err != nil {
 			if _, ok := err.(database.CommitTimestampError); !ok {
