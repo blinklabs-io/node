@@ -16,6 +16,7 @@ package connmanager
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"sync"
 
@@ -81,6 +82,9 @@ type ConnectionManagerHost struct {
 }
 
 func NewConnectionManager(cfg ConnectionManagerConfig) *ConnectionManager {
+	if cfg.Logger == nil {
+		cfg.Logger = slog.New(slog.NewJSONHandler(io.Discard, nil))
+	}
 	return &ConnectionManager{
 		config: cfg,
 		connections: make(
@@ -103,15 +107,15 @@ func (c *ConnectionManager) AddHost(
 		Port:    port,
 		Tags:    tmpTags,
 	}
-	if c.config.Logger != nil {
-		c.config.Logger.Debug(
-			fmt.Sprintf(
-				"connmanager: adding host: %+v",
-				cmHost,
-			),
-			"component", "connmanager",
-		)
-	}
+
+	c.config.Logger.Debug(
+		fmt.Sprintf(
+			"connmanager: adding host: %+v",
+			cmHost,
+		),
+		"component", "connmanager",
+	)
+
 	c.hosts = append(
 		c.hosts,
 		cmHost,
