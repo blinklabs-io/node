@@ -28,6 +28,7 @@ import (
 	"github.com/blinklabs-io/node/state/eras"
 	"github.com/blinklabs-io/node/state/models"
 
+	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/cbor"
 	"github.com/blinklabs-io/gouroboros/ledger"
 	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
@@ -47,18 +48,27 @@ type LedgerStateConfig struct {
 	EventBus          *event.EventBus
 	CardanoNodeConfig *cardano.CardanoNodeConfig
 	PromRegistry      prometheus.Registerer
+	// Callback(s)
+	BlockfetchRequestRangeFunc BlockfetchRequestRangeFunc
 }
+
+// BlockfetchRequestRangeFunc describes a callback function used to start a blockfetch request for
+// a range of blocks
+type BlockfetchRequestRangeFunc func(ouroboros.ConnectionId, ocommon.Point, ocommon.Point) error
 
 type LedgerState struct {
 	sync.RWMutex
-	config                    LedgerStateConfig
-	db                        database.Database
-	timerCleanupConsumedUtxos *time.Timer
-	currentPParams            any
-	currentEpoch              models.Epoch
-	currentEra                eras.EraDesc
-	currentTip                ochainsync.Tip
-	metrics                   stateMetrics
+	config                     LedgerStateConfig
+	db                         database.Database
+	timerCleanupConsumedUtxos  *time.Timer
+	currentPParams             any
+	currentEpoch               models.Epoch
+	currentEra                 eras.EraDesc
+	currentTip                 ochainsync.Tip
+	metrics                    stateMetrics
+	chainsyncHeaderPoints      []ocommon.Point
+	chainsyncBlockfetchBusy    bool
+	chainsyncBlockfetchWaiting bool
 }
 
 func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
@@ -138,7 +148,11 @@ func NewLedgerState(cfg LedgerStateConfig) (*LedgerState, error) {
 	// Setup event handlers
 	ls.config.EventBus.SubscribeFunc(
 		ChainsyncEventType,
-		ls.handleEventChainSync,
+		ls.handleEventChainsync,
+	)
+	ls.config.EventBus.SubscribeFunc(
+		BlockfetchEventType,
+		ls.handleEventBlockfetch,
 	)
 	// Init metrics
 	ls.metrics.init(ls.config.PromRegistry)
@@ -254,45 +268,6 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 	)
 }
 
-func (ls *LedgerState) handleEventChainSync(evt event.Event) {
-	ls.Lock()
-	defer ls.Unlock()
-	e := evt.Data.(ChainsyncEvent)
-	if e.Rollback {
-		if err := ls.handleEventChainSyncRollback(e); err != nil {
-			// TODO: actually handle this error
-			ls.config.Logger.Error(
-				"failed to handle rollback",
-				"component", "ledger",
-				"error", err,
-			)
-			return
-		}
-	} else if e.Block != nil {
-		if err := ls.handleEventChainSyncBlock(e); err != nil {
-			// TODO: actually handle this error
-			ls.config.Logger.Error(
-				"failed to handle block",
-				"component", "ledger",
-				"error", err,
-			)
-			return
-		}
-	} else if e.BlockHeader != nil {
-		if err := ls.handleEventChainSyncBlockHeader(e); err != nil {
-			// TODO: actually handle this error
-			ls.config.Logger.Error(
-				fmt.Sprintf("ledger: failed to handle block header: %s", err),
-			)
-			return
-		}
-	}
-}
-
-func (ls *LedgerState) handleEventChainSyncRollback(e ChainsyncEvent) error {
-	return ls.rollback(e.Point)
-}
-
 func (ls *LedgerState) rollback(point ocommon.Point) error {
 	// Start a transaction
 	txn := ls.db.Transaction(true)
@@ -356,177 +331,6 @@ func (ls *LedgerState) rollback(point ocommon.Point) error {
 			"chain rolled back, new tip: %x at slot %d",
 			point.Hash,
 			point.Slot,
-		),
-		"component",
-		"ledger",
-	)
-	return nil
-}
-
-func (ls *LedgerState) handleEventChainSyncBlockHeader(e ChainsyncEvent) error {
-	// TODO
-	return nil
-}
-
-func (ls *LedgerState) handleEventChainSyncBlock(e ChainsyncEvent) error {
-	tmpBlock := models.Block{
-		Slot: e.Point.Slot,
-		Hash: e.Point.Hash,
-		// TODO: figure out something for Byron. this won't work, since the
-		// block number isn't stored in the block itself
-		Number: e.Block.BlockNumber(),
-		Type:   e.Type,
-		Cbor:   e.Block.Cbor(),
-	}
-	// Start a transaction
-	txn := ls.db.Transaction(true)
-	err := txn.Do(func(txn *database.Txn) error {
-		// Special handling for genesis block
-		if ls.currentEpoch.ID == 0 {
-			// Check for era change
-			if uint(e.Block.Era().Id) != ls.currentEra.Id {
-				targetEraId := uint(e.Block.Era().Id)
-				// Transition through every era between the current and the target era
-				for nextEraId := ls.currentEra.Id + 1; nextEraId <= targetEraId; nextEraId++ {
-					if err := ls.transitionToEra(txn, nextEraId, ls.currentEpoch.EpochId, e.Point.Slot); err != nil {
-						return err
-					}
-				}
-			}
-			// Create initial epoch record
-			epochSlotLength, epochLength, err := ls.currentEra.EpochLengthFunc(ls.config.CardanoNodeConfig)
-			if err != nil {
-				return err
-			}
-			newEpoch := models.Epoch{
-				EpochId:       0,
-				EraId:         ls.currentEra.Id,
-				StartSlot:     0,
-				SlotLength:    epochSlotLength,
-				LengthInSlots: epochLength,
-			}
-			if result := txn.Metadata().Create(&newEpoch); result.Error != nil {
-				return result.Error
-			}
-			ls.currentEpoch = newEpoch
-			ls.config.Logger.Debug(
-				"added initial epoch to DB",
-				"epoch", fmt.Sprintf("%+v", newEpoch),
-				"component", "ledger",
-			)
-		}
-		// Check for epoch rollover
-		if e.Point.Slot > ls.currentEpoch.StartSlot+uint64(
-			ls.currentEpoch.LengthInSlots,
-		) {
-			// Apply pending pparam updates
-			if err := ls.applyPParamUpdates(txn, ls.currentEpoch.EpochId, e.Point.Slot); err != nil {
-				return err
-			}
-			// Create next epoch record
-			epochSlotLength, epochLength, err := ls.currentEra.EpochLengthFunc(ls.config.CardanoNodeConfig)
-			if err != nil {
-				return err
-			}
-			newEpoch := models.Epoch{
-				EpochId:       ls.currentEpoch.EpochId + 1,
-				EraId:         uint(e.Block.Era().Id),
-				SlotLength:    epochSlotLength,
-				LengthInSlots: epochLength,
-				StartSlot: ls.currentEpoch.StartSlot + uint64(
-					ls.currentEpoch.LengthInSlots,
-				),
-			}
-			if result := txn.Metadata().Create(&newEpoch); result.Error != nil {
-				return result.Error
-			}
-			ls.currentEpoch = newEpoch
-			ls.metrics.epochNum.Set(float64(newEpoch.EpochId))
-			ls.config.Logger.Debug(
-				"added next epoch to DB",
-				"epoch", fmt.Sprintf("%+v", newEpoch),
-				"component", "ledger",
-			)
-		}
-		// TODO: track this using protocol params and hard forks
-		// Check for era change
-		if uint(e.Block.Era().Id) != ls.currentEra.Id {
-			targetEraId := uint(e.Block.Era().Id)
-			// Transition through every era between the current and the target era
-			for nextEraId := ls.currentEra.Id + 1; nextEraId <= targetEraId; nextEraId++ {
-				if err := ls.transitionToEra(txn, nextEraId, ls.currentEpoch.EpochId, e.Point.Slot); err != nil {
-					return err
-				}
-			}
-		}
-		// Add block to database
-		if err := ls.addBlock(txn, tmpBlock); err != nil {
-			return fmt.Errorf("add block: %w", err)
-		}
-		// Process transactions
-		for _, tx := range e.Block.Transactions() {
-			// Process consumed UTxOs
-			for _, consumed := range tx.Consumed() {
-				if err := ls.consumeUtxo(txn, consumed, e.Point.Slot); err != nil {
-					return fmt.Errorf("remove consumed UTxO: %w", err)
-				}
-			}
-			// Process produced UTxOs
-			for _, produced := range tx.Produced() {
-				outAddr := produced.Output.Address()
-				tmpUtxo := models.Utxo{
-					TxId:       produced.Id.Id().Bytes(),
-					OutputIdx:  produced.Id.Index(),
-					AddedSlot:  e.Point.Slot,
-					PaymentKey: outAddr.PaymentKeyHash().Bytes(),
-					StakingKey: outAddr.StakeKeyHash().Bytes(),
-					Cbor:       produced.Output.Cbor(),
-				}
-				if err := ls.addUtxo(txn, tmpUtxo); err != nil {
-					return fmt.Errorf("add produced UTxO: %w", err)
-				}
-			}
-			// XXX: generate event for each TX/UTxO?
-			// Protocol parameter updates
-			if updateEpoch, paramUpdates := tx.ProtocolParameterUpdates(); updateEpoch > 0 {
-				for genesisHash, update := range paramUpdates {
-					tmpUpdate := models.PParamUpdate{
-						AddedSlot:   e.Point.Slot,
-						Epoch:       updateEpoch,
-						GenesisHash: genesisHash.Bytes(),
-						Cbor:        update.Cbor(),
-					}
-					if result := txn.Metadata().Create(&tmpUpdate); result.Error != nil {
-						return result.Error
-					}
-				}
-			}
-			// Certificates
-			if err := ls.processTransactionCertificates(txn, e.Point, tx); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	// Generate event
-	ls.config.EventBus.Publish(
-		ChainBlockEventType,
-		event.NewEvent(
-			ChainBlockEventType,
-			ChainBlockEvent{
-				Point: e.Point,
-				Block: tmpBlock,
-			},
-		),
-	)
-	ls.config.Logger.Info(
-		fmt.Sprintf(
-			"chain extended, new tip: %s at slot %d",
-			e.Block.Hash(),
-			e.Block.SlotNumber(),
 		),
 		"component",
 		"ledger",

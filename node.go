@@ -74,11 +74,12 @@ func (n *Node) Run() error {
 	// Load state
 	state, err := state.NewLedgerState(
 		state.LedgerStateConfig{
-			DataDir:           n.config.dataDir,
-			EventBus:          n.eventBus,
-			Logger:            n.config.logger,
-			CardanoNodeConfig: n.config.cardanoNodeConfig,
-			PromRegistry:      n.config.promRegistry,
+			DataDir:                    n.config.dataDir,
+			EventBus:                   n.eventBus,
+			Logger:                     n.config.logger,
+			CardanoNodeConfig:          n.config.cardanoNodeConfig,
+			PromRegistry:               n.config.promRegistry,
+			BlockfetchRequestRangeFunc: n.blockfetchClientRequestRange,
 		},
 	)
 	if err != nil {

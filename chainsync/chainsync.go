@@ -15,8 +15,6 @@
 package chainsync
 
 import (
-	"encoding/hex"
-	"fmt"
 	"sync"
 
 	"github.com/blinklabs-io/node/event"
@@ -24,7 +22,6 @@ import (
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/connection"
-	"github.com/blinklabs-io/gouroboros/ledger"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
 )
 
@@ -97,47 +94,4 @@ func (s *State) RemoveClientConnId(connId ouroboros.ConnectionId) {
 	if s.clientConnId != nil && *s.clientConnId == connId {
 		s.clientConnId = nil
 	}
-}
-
-func (s *State) AddBlock(block ledger.Block, blockType uint) error {
-	s.Lock()
-	defer s.Unlock()
-	// Generate event
-	blkHash, err := hex.DecodeString(block.Hash())
-	if err != nil {
-		return fmt.Errorf("decode block hash: %w", err)
-	}
-	s.eventBus.Publish(
-		state.ChainsyncEventType,
-		event.NewEvent(
-			state.ChainsyncEventType,
-			state.ChainsyncEvent{
-				Point: ocommon.NewPoint(block.SlotNumber(), blkHash),
-				Type:  blockType,
-				Block: block,
-			},
-		),
-	)
-	return nil
-}
-
-func (s *State) Rollback(slot uint64, hash string) error {
-	s.Lock()
-	defer s.Unlock()
-	// Generate event
-	blkHash, err := hex.DecodeString(hash)
-	if err != nil {
-		return fmt.Errorf("decode block hash: %w", err)
-	}
-	s.eventBus.Publish(
-		state.ChainsyncEventType,
-		event.NewEvent(
-			state.ChainsyncEventType,
-			state.ChainsyncEvent{
-				Rollback: true,
-				Point:    ocommon.NewPoint(slot, blkHash),
-			},
-		),
-	)
-	return nil
 }

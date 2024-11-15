@@ -15,10 +15,16 @@
 package node
 
 import (
+	"encoding/hex"
+	"fmt"
+
+	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/ledger"
 	"github.com/blinklabs-io/gouroboros/protocol/blockfetch"
 	oblockfetch "github.com/blinklabs-io/gouroboros/protocol/blockfetch"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
+	"github.com/blinklabs-io/node/event"
+	"github.com/blinklabs-io/node/state"
 )
 
 func (n *Node) blockfetchServerConnOpts() []oblockfetch.BlockFetchOptionFunc {
@@ -30,6 +36,7 @@ func (n *Node) blockfetchServerConnOpts() []oblockfetch.BlockFetchOptionFunc {
 func (n *Node) blockfetchClientConnOpts() []oblockfetch.BlockFetchOptionFunc {
 	return []oblockfetch.BlockFetchOptionFunc{
 		oblockfetch.WithBlockFunc(n.blockfetchClientBlock),
+		oblockfetch.WithBatchDoneFunc(n.blockfetchClientBatchDone),
 	}
 }
 
@@ -77,19 +84,60 @@ func (n *Node) blockfetchServerRequestRange(
 	return nil
 }
 
+// blockfetchClientRequestRange is called by the ledger when it needs to request a range of block bodies
+func (n *Node) blockfetchClientRequestRange(
+	connId ouroboros.ConnectionId,
+	start ocommon.Point,
+	end ocommon.Point,
+) error {
+	conn := n.connManager.GetConnectionById(connId)
+	if conn == nil {
+		return fmt.Errorf("failed to lookup connection ID: %s", connId.String())
+	}
+	oConn := conn.Conn
+	if err := oConn.BlockFetch().Client.GetBlockRange(start, end); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (n *Node) blockfetchClientBlock(
 	ctx blockfetch.CallbackContext,
 	blockType uint,
 	block ledger.Block,
 ) error {
-	if err := n.chainsyncState.AddBlock(block, blockType); err != nil {
-		return err
+	// Generate event
+	blkHash, err := hex.DecodeString(block.Hash())
+	if err != nil {
+		return fmt.Errorf("decode block hash: %w", err)
 	}
-	// Start normal chain-sync if we've reached the last block of our bulk range
-	if block.SlotNumber() == n.chainsyncBulkRangeEnd.Slot {
-		if err := n.chainsyncClientStart(ctx.ConnectionId); err != nil {
-			return err
-		}
-	}
+	n.eventBus.Publish(
+		state.BlockfetchEventType,
+		event.NewEvent(
+			state.BlockfetchEventType,
+			state.BlockfetchEvent{
+				Point: ocommon.NewPoint(block.SlotNumber(), blkHash),
+				Type:  blockType,
+				Block: block,
+			},
+		),
+	)
+	return nil
+}
+
+func (n *Node) blockfetchClientBatchDone(
+	ctx blockfetch.CallbackContext,
+) error {
+	// Generate event
+	n.eventBus.Publish(
+		state.BlockfetchEventType,
+		event.NewEvent(
+			state.BlockfetchEventType,
+			state.BlockfetchEvent{
+				ConnectionId: ctx.ConnectionId,
+				BatchDone:    true,
+			},
+		),
+	)
 	return nil
 }
