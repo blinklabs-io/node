@@ -67,6 +67,7 @@ type LedgerState struct {
 	currentTip                 ochainsync.Tip
 	metrics                    stateMetrics
 	chainsyncHeaderPoints      []ocommon.Point
+	chainsyncBlockEvents       []BlockfetchEvent
 	chainsyncBlockfetchBusy    bool
 	chainsyncBlockfetchWaiting bool
 }
