@@ -16,6 +16,8 @@ package models
 
 import (
 	"net"
+
+	"github.com/blinklabs-io/node/database"
 )
 
 type PoolRegistration struct {
@@ -24,8 +26,7 @@ type PoolRegistration struct {
 	VrfKeyHash   []byte
 	Pledge       uint64
 	Cost         uint64
-	MarginNum    uint64
-	MarginDenom  uint64
+	Margin       *database.Rat
 	Owners       []PoolRegistrationOwner
 	Relays       []PoolRegistrationRelay
 	MetadataUrl  string

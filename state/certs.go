@@ -37,8 +37,7 @@ func (ls *LedgerState) processTransactionCertificates(
 				VrfKeyHash:  cert.VrfKeyHash[:],
 				Pledge:      cert.Pledge,
 				Cost:        cert.Cost,
-				MarginNum:   cert.Margin.Num().Uint64(),
-				MarginDenom: cert.Margin.Denom().Uint64(),
+				Margin:      &database.Rat{Rat: cert.Margin.Rat},
 				AddedSlot:   blockPoint.Slot,
 			}
 			if cert.PoolMetadata != nil {
