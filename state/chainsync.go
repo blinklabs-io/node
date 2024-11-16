@@ -16,6 +16,7 @@ package state
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/blinklabs-io/node/database"
 	"github.com/blinklabs-io/node/event"
@@ -25,6 +26,10 @@ import (
 const (
 	blockfetchBatchSize          = 500
 	blockfetchBatchSlotThreshold = 2500 * 20 // TODO: calculate from protocol params
+
+	// Timeout for updates on a blockfetch operation. This is based on a 2s BatchStart
+	// and a 2s Block timeout for blockfetch
+	blockfetchBusyTimeout = 5 * time.Second
 )
 
 func (ls *LedgerState) handleEventChainsync(evt event.Event) {
@@ -91,6 +96,17 @@ func (ls *LedgerState) handleEventChainsyncBlockHeader(e ChainsyncEvent) error {
 	}
 	// Don't start fetch if there's already one in progress
 	if ls.chainsyncBlockfetchBusy {
+		// Clear busy flag on timeout
+		if time.Since(ls.chainsyncBlockfetchBusyTime) > blockfetchBusyTimeout {
+			ls.chainsyncBlockfetchBusy = false
+			ls.chainsyncBlockfetchWaiting = false
+			ls.config.Logger.Warn(
+				fmt.Sprintf("blockfetch operation timed out after %s", blockfetchBusyTimeout),
+				"component",
+				"ledger",
+			)
+			return nil
+		}
 		ls.chainsyncBlockfetchWaiting = true
 		return nil
 	}
@@ -104,6 +120,7 @@ func (ls *LedgerState) handleEventChainsyncBlockHeader(e ChainsyncEvent) error {
 		return err
 	}
 	ls.chainsyncBlockfetchBusy = true
+	ls.chainsyncBlockfetchBusyTime = time.Now()
 	// Reset cached header points
 	ls.chainsyncHeaderPoints = nil
 	return nil
@@ -114,6 +131,8 @@ func (ls *LedgerState) handleEventBlockfetchBlock(e BlockfetchEvent) error {
 		ls.chainsyncBlockEvents,
 		e,
 	)
+	// Update busy time in order to detect fetch timeout
+	ls.chainsyncBlockfetchBusyTime = time.Now()
 	return nil
 }
 
@@ -310,8 +329,10 @@ func (ls *LedgerState) handleEventBlockfetchBatchDone(e BlockfetchEvent) error {
 		return err
 	}
 	// Check for pending block range request
-	if !ls.chainsyncBlockfetchWaiting {
+	if !ls.chainsyncBlockfetchWaiting ||
+		len(ls.chainsyncHeaderPoints) == 0 {
 		ls.chainsyncBlockfetchBusy = false
+		ls.chainsyncBlockfetchWaiting = false
 		return nil
 	}
 	// Request waiting bulk range
@@ -323,6 +344,8 @@ func (ls *LedgerState) handleEventBlockfetchBatchDone(e BlockfetchEvent) error {
 	if err != nil {
 		return err
 	}
+	ls.chainsyncBlockfetchBusyTime = time.Now()
+	ls.chainsyncBlockfetchWaiting = false
 	// Reset cached header points
 	ls.chainsyncHeaderPoints = nil
 	return nil

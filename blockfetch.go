@@ -17,6 +17,7 @@ package node
 import (
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/ledger"
@@ -37,6 +38,8 @@ func (n *Node) blockfetchClientConnOpts() []oblockfetch.BlockFetchOptionFunc {
 	return []oblockfetch.BlockFetchOptionFunc{
 		oblockfetch.WithBlockFunc(n.blockfetchClientBlock),
 		oblockfetch.WithBatchDoneFunc(n.blockfetchClientBatchDone),
+		oblockfetch.WithBatchStartTimeout(2 * time.Second),
+		oblockfetch.WithBlockTimeout(2 * time.Second),
 	}
 }
 
