@@ -35,8 +35,8 @@ func (ls *LedgerState) processTransactionCertificates(
 			tmpItem := models.PoolRegistration{
 				PoolKeyHash: cert.Operator[:],
 				VrfKeyHash:  cert.VrfKeyHash[:],
-				Pledge:      cert.Pledge,
-				Cost:        cert.Cost,
+				Pledge:      database.Uint64(cert.Pledge),
+				Cost:        database.Uint64(cert.Cost),
 				Margin:      &database.Rat{Rat: cert.Margin.Rat},
 				AddedSlot:   blockPoint.Slot,
 			}

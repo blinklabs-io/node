@@ -24,8 +24,8 @@ type PoolRegistration struct {
 	ID           uint   `gorm:"primarykey"`
 	PoolKeyHash  []byte `gorm:"index"`
 	VrfKeyHash   []byte
-	Pledge       uint64
-	Cost         uint64
+	Pledge       database.Uint64
+	Cost         database.Uint64
 	Margin       *database.Rat
 	Owners       []PoolRegistrationOwner
 	Relays       []PoolRegistrationRelay

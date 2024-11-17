@@ -18,6 +18,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"math/big"
+	"strconv"
 )
 
 type Rat struct {
@@ -42,5 +43,24 @@ func (r *Rat) Scan(val any) error {
 	if _, ok := r.SetString(v); !ok {
 		return fmt.Errorf("failed to set big.Rat value from string: %s", v)
 	}
+	return nil
+}
+
+type Uint64 uint64
+
+func (u Uint64) Value() (driver.Value, error) {
+	return strconv.FormatUint(uint64(u), 10), nil
+}
+
+func (u *Uint64) Scan(val any) error {
+	v, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("value was not expected type, wanted string, got %T", val)
+	}
+	tmpUint, err := strconv.ParseUint(v, 10, 64)
+	if err != nil {
+		return err
+	}
+	*u = Uint64(tmpUint)
 	return nil
 }
