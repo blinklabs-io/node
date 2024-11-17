@@ -122,8 +122,6 @@ func (n *Node) chainsyncServerFindIntersect(
 func (n *Node) chainsyncServerRequestNext(
 	ctx ochainsync.CallbackContext,
 ) error {
-	n.ledgerState.RLock()
-	defer n.ledgerState.RUnlock()
 	// Create/retrieve chainsync state for connection
 	tip := n.ledgerState.Tip()
 	clientState, err := n.chainsyncState.AddClient(
