@@ -33,8 +33,8 @@ const (
 )
 
 func (ls *LedgerState) handleEventChainsync(evt event.Event) {
-	ls.Lock()
-	defer ls.Unlock()
+	ls.chainsyncMutex.Lock()
+	defer ls.chainsyncMutex.Unlock()
 	e := evt.Data.(ChainsyncEvent)
 	if e.Rollback {
 		if err := ls.handleEventChainsyncRollback(e); err != nil {
@@ -58,8 +58,8 @@ func (ls *LedgerState) handleEventChainsync(evt event.Event) {
 }
 
 func (ls *LedgerState) handleEventBlockfetch(evt event.Event) {
-	ls.Lock()
-	defer ls.Unlock()
+	ls.chainsyncMutex.Lock()
+	defer ls.chainsyncMutex.Unlock()
 	e := evt.Data.(BlockfetchEvent)
 	if e.BatchDone {
 		if err := ls.handleEventBlockfetchBatchDone(e); err != nil {
@@ -79,6 +79,8 @@ func (ls *LedgerState) handleEventBlockfetch(evt event.Event) {
 }
 
 func (ls *LedgerState) handleEventChainsyncRollback(e ChainsyncEvent) error {
+	ls.Lock()
+	defer ls.Unlock()
 	return ls.rollback(e.Point)
 }
 
@@ -138,6 +140,9 @@ func (ls *LedgerState) handleEventBlockfetchBlock(e BlockfetchEvent) error {
 }
 
 func (ls *LedgerState) processBlockEvents() error {
+	// XXX: move this into the loop?
+	ls.Lock()
+	defer ls.Unlock()
 	batchOffset := 0
 	for {
 		batchSize := min(

@@ -58,6 +58,7 @@ type BlockfetchRequestRangeFunc func(ouroboros.ConnectionId, ocommon.Point, ocom
 
 type LedgerState struct {
 	sync.RWMutex
+	chainsyncMutex              sync.Mutex
 	config                      LedgerStateConfig
 	db                          database.Database
 	timerCleanupConsumedUtxos   *time.Timer
