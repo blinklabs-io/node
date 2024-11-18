@@ -544,6 +544,7 @@ func (ls *LedgerState) loadEpoch() error {
 	}
 	ls.currentEpoch = tmpEpoch
 	ls.currentEra = eras.Eras[tmpEpoch.EraId]
+	// Update metrics
 	ls.metrics.epochNum.Set(float64(ls.currentEpoch.EpochId))
 	return nil
 }
@@ -565,6 +566,10 @@ func (ls *LedgerState) loadTip() error {
 		Point:       ocommon.NewPoint(tmpBlock.Slot, tmpBlock.Hash),
 		BlockNumber: tmpBlock.Number,
 	}
+	// Update metrics
+	ls.metrics.blockNum.Set(float64(ls.currentTip.BlockNumber))
+	ls.metrics.slotNum.Set(float64(ls.currentTip.Point.Slot))
+	ls.metrics.slotInEpoch.Set(float64(ls.currentTip.Point.Slot - ls.currentEpoch.StartSlot))
 	return nil
 }
 
