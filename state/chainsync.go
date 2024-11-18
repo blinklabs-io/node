@@ -90,7 +90,8 @@ func (ls *LedgerState) handleEventChainsyncBlockHeader(e ChainsyncEvent) error {
 	)
 	// Wait for additional block headers before fetching block bodies if we're
 	// far enough out from tip
-	if (e.Tip.Point.Slot-e.Point.Slot > blockfetchBatchSlotThreshold) &&
+	if e.Point.Slot < e.Tip.Point.Slot &&
+		(e.Tip.Point.Slot-e.Point.Slot > blockfetchBatchSlotThreshold) &&
 		len(ls.chainsyncHeaderPoints) < blockfetchBatchSize {
 		return nil
 	}
