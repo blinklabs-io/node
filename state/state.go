@@ -340,7 +340,12 @@ func (ls *LedgerState) rollback(point ocommon.Point) error {
 	return nil
 }
 
-func (ls *LedgerState) transitionToEra(txn *database.Txn, nextEraId uint, startEpoch uint, addedSlot uint64) error {
+func (ls *LedgerState) transitionToEra(
+	txn *database.Txn,
+	nextEraId uint,
+	startEpoch uint,
+	addedSlot uint64,
+) error {
 	nextEra := eras.Eras[nextEraId]
 	if nextEra.HardForkFunc != nil {
 		// Perform hard fork
@@ -377,7 +382,11 @@ func (ls *LedgerState) transitionToEra(txn *database.Txn, nextEraId uint, startE
 	return nil
 }
 
-func (ls *LedgerState) applyPParamUpdates(txn *database.Txn, currentEpoch uint, addedSlot uint64) error {
+func (ls *LedgerState) applyPParamUpdates(
+	txn *database.Txn,
+	currentEpoch uint,
+	addedSlot uint64,
+) error {
 	// Check for pparam updates that apply at the end of the epoch
 	var pparamUpdates []models.PParamUpdate
 	result := txn.Metadata().
@@ -568,7 +577,9 @@ func (ls *LedgerState) loadTip() error {
 	// Update metrics
 	ls.metrics.blockNum.Set(float64(ls.currentTip.BlockNumber))
 	ls.metrics.slotNum.Set(float64(ls.currentTip.Point.Slot))
-	ls.metrics.slotInEpoch.Set(float64(ls.currentTip.Point.Slot - ls.currentEpoch.StartSlot))
+	ls.metrics.slotInEpoch.Set(
+		float64(ls.currentTip.Point.Slot - ls.currentEpoch.StartSlot),
+	)
 	return nil
 }
 

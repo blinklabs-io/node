@@ -25,7 +25,9 @@ var ByronEraDesc = EraDesc{
 	EpochLengthFunc: EpochLengthByron,
 }
 
-func EpochLengthByron(nodeConfig *cardano.CardanoNodeConfig) (uint, uint, error) {
+func EpochLengthByron(
+	nodeConfig *cardano.CardanoNodeConfig,
+) (uint, uint, error) {
 	byronGenesis, err := nodeConfig.ByronGenesis()
 	if err != nil {
 		return 0, 0, err

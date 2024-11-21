@@ -65,7 +65,10 @@ func (ls *LedgerState) handleEventBlockfetch(evt event.Event) {
 		if err := ls.handleEventBlockfetchBatchDone(e); err != nil {
 			// TODO: actually handle this error
 			ls.config.Logger.Error(
-				fmt.Sprintf("ledger: failed to handle blockfetch batch done: %s", err),
+				fmt.Sprintf(
+					"ledger: failed to handle blockfetch batch done: %s",
+					err,
+				),
 			)
 		}
 	} else if e.Block != nil {
@@ -104,7 +107,10 @@ func (ls *LedgerState) handleEventChainsyncBlockHeader(e ChainsyncEvent) error {
 			ls.chainsyncBlockfetchBusy = false
 			ls.chainsyncBlockfetchWaiting = false
 			ls.config.Logger.Warn(
-				fmt.Sprintf("blockfetch operation timed out after %s", blockfetchBusyTimeout),
+				fmt.Sprintf(
+					"blockfetch operation timed out after %s",
+					blockfetchBusyTimeout,
+				),
 				"component",
 				"ledger",
 			)
@@ -180,7 +186,10 @@ func (ls *LedgerState) processBlockEvents() error {
 	return nil
 }
 
-func (ls *LedgerState) processBlockEvent(txn *database.Txn, e BlockfetchEvent) error {
+func (ls *LedgerState) processBlockEvent(
+	txn *database.Txn,
+	e BlockfetchEvent,
+) error {
 	tmpBlock := models.Block{
 		Slot: e.Point.Slot,
 		Hash: e.Point.Hash,
@@ -203,7 +212,9 @@ func (ls *LedgerState) processBlockEvent(txn *database.Txn, e BlockfetchEvent) e
 			}
 		}
 		// Create initial epoch record
-		epochSlotLength, epochLength, err := ls.currentEra.EpochLengthFunc(ls.config.CardanoNodeConfig)
+		epochSlotLength, epochLength, err := ls.currentEra.EpochLengthFunc(
+			ls.config.CardanoNodeConfig,
+		)
 		if err != nil {
 			return err
 		}
@@ -233,7 +244,9 @@ func (ls *LedgerState) processBlockEvent(txn *database.Txn, e BlockfetchEvent) e
 			return err
 		}
 		// Create next epoch record
-		epochSlotLength, epochLength, err := ls.currentEra.EpochLengthFunc(ls.config.CardanoNodeConfig)
+		epochSlotLength, epochLength, err := ls.currentEra.EpochLengthFunc(
+			ls.config.CardanoNodeConfig,
+		)
 		if err != nil {
 			return err
 		}
