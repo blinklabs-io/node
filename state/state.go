@@ -216,16 +216,14 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 	ls.timerCleanupConsumedUtxos = time.AfterFunc(
 		cleanupConsumedUtxosInterval,
 		func() {
-			ls.Lock()
 			defer func() {
-				// Unlock ledger state
-				ls.Unlock()
 				// Schedule the next run
 				ls.scheduleCleanupConsumedUtxos()
 			}()
 			// Get the current tip, since we're querying by slot
 			tip := ls.Tip()
 			for {
+				ls.Lock()
 				// Perform updates in a transaction
 				batchDone := false
 				txn := ls.db.Transaction(true)
@@ -255,6 +253,7 @@ func (ls *LedgerState) scheduleCleanupConsumedUtxos() {
 					}
 					return nil
 				})
+				ls.Unlock()
 				if err != nil {
 					ls.config.Logger.Error(
 						"failed to update utxos",
