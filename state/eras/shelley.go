@@ -82,7 +82,9 @@ func HardForkShelley(
 	return ret, nil
 }
 
-func EpochLengthShelley(nodeConfig *cardano.CardanoNodeConfig) (uint, uint, error) {
+func EpochLengthShelley(
+	nodeConfig *cardano.CardanoNodeConfig,
+) (uint, uint, error) {
 	shelleyGenesis, err := nodeConfig.ShelleyGenesis()
 	if err != nil {
 		return 0, 0, err

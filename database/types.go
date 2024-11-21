@@ -38,7 +38,10 @@ func (r *Rat) Scan(val any) error {
 	}
 	v, ok := val.(string)
 	if !ok {
-		return fmt.Errorf("value was not expected type, wanted string, got %T", val)
+		return fmt.Errorf(
+			"value was not expected type, wanted string, got %T",
+			val,
+		)
 	}
 	if _, ok := r.SetString(v); !ok {
 		return fmt.Errorf("failed to set big.Rat value from string: %s", v)
@@ -55,7 +58,10 @@ func (u Uint64) Value() (driver.Value, error) {
 func (u *Uint64) Scan(val any) error {
 	v, ok := val.(string)
 	if !ok {
-		return fmt.Errorf("value was not expected type, wanted string, got %T", val)
+		return fmt.Errorf(
+			"value was not expected type, wanted string, got %T",
+			val,
+		)
 	}
 	tmpUint, err := strconv.ParseUint(v, 10, 64)
 	if err != nil {

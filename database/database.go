@@ -194,7 +194,9 @@ func NewPersistent(
 	// WAL journal mode, disable sync on write, increase cache size to 50MB (from 2MB)
 	metadataConnOpts := "_pragma=journal_mode(WAL)&_pragma=sync(OFF)&_pragma=cache_size(-50000)"
 	metadataDb, err := gorm.Open(
-		sqlite.Open(fmt.Sprintf("file:%s?%s", metadataDbPath, metadataConnOpts)),
+		sqlite.Open(
+			fmt.Sprintf("file:%s?%s", metadataDbPath, metadataConnOpts),
+		),
 		&gorm.Config{
 			Logger: gormlogger.Discard,
 		},
