@@ -25,7 +25,7 @@ require (
 )
 
 // XXX: uncomment when testing local changes to gouroboros
-// replace github.com/blinklabs-io/gouroboros => ../gouroboros
+replace github.com/blinklabs-io/gouroboros => ../gouroboros
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect

@@ -15,8 +15,11 @@
 package state
 
 import (
+	"encoding/hex"
 	"fmt"
 	"time"
+
+	"github.com/blinklabs-io/gouroboros/ledger"
 
 	"github.com/blinklabs-io/node/database"
 	"github.com/blinklabs-io/node/event"
@@ -270,6 +273,39 @@ func (ls *LedgerState) processBlockEvent(
 			"component", "ledger",
 		)
 	}
+
+	// TODO: actually validate here
+	if e.Block.Era().Id >= 5 { // Babbage
+		ls.config.Logger.Debug(
+			"attempting block validation...",
+			"slot_number",
+			tmpBlock.Slot,
+		)
+		// Validate block
+		headerCbor := e.Block.Header().Cbor()
+		header, err := ledger.NewBabbageBlockHeaderFromCbor(
+			headerCbor,
+		)
+		if err != nil {
+			ls.config.Logger.Debug("error getting block header")
+		} else {
+			vrfResult := header.Body.VrfResult.([]interface{})
+			// TODO: figure out derivation here
+			vrfOutputBytes := vrfResult[0].([]byte)
+			verifyError, isValid, vrfHex, blockNo, slotNo := ledger.VerifyBlock(ledger.BlockHexCbor{
+				HeaderCbor:    hex.EncodeToString(headerCbor),
+				Eta0:          hex.EncodeToString(vrfOutputBytes),
+				Spk:           int(129600), // TODO: get from protocol params
+				BlockBodyCbor: hex.EncodeToString(tmpBlock.Cbor),
+			})
+			ls.config.Logger.Debug(
+				fmt.Sprintf("use the things: error: %+v, isValid: %+v, vrfHex: %s, blockNo: %d, slotNo: %d",
+					verifyError, isValid, vrfHex, blockNo, slotNo,
+				),
+			)
+		}
+	}
+
 	// TODO: track this using protocol params and hard forks
 	// Check for era change
 	if uint(e.Block.Era().Id) != ls.currentEra.Id {
