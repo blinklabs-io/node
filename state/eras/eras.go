@@ -14,7 +14,7 @@
 
 package eras
 
-import "github.com/blinklabs-io/node/config/cardano"
+import "github.com/blinklabs-io/dingo/config/cardano"
 
 type EraDesc struct {
 	Id                      uint

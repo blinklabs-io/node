@@ -22,11 +22,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blinklabs-io/node/config/cardano"
-	"github.com/blinklabs-io/node/database"
-	"github.com/blinklabs-io/node/event"
-	"github.com/blinklabs-io/node/state/eras"
-	"github.com/blinklabs-io/node/state/models"
+	"github.com/blinklabs-io/dingo/config/cardano"
+	"github.com/blinklabs-io/dingo/database"
+	"github.com/blinklabs-io/dingo/event"
+	"github.com/blinklabs-io/dingo/state/eras"
+	"github.com/blinklabs-io/dingo/state/models"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/cbor"

@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package node
+package dingo
 
 import (
 	"encoding/hex"
 	"fmt"
 	"time"
 
+	"github.com/blinklabs-io/dingo/mempool"
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/ledger"
 	"github.com/blinklabs-io/gouroboros/protocol/txsubmission"
 	otxsubmission "github.com/blinklabs-io/gouroboros/protocol/txsubmission"
-	"github.com/blinklabs-io/node/mempool"
 )
 
 const (

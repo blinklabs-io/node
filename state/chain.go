@@ -17,7 +17,7 @@ package state
 import (
 	"errors"
 
-	"github.com/blinklabs-io/node/state/models"
+	"github.com/blinklabs-io/dingo/state/models"
 	"gorm.io/gorm"
 
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"

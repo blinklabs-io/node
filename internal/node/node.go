@@ -22,9 +22,9 @@ import (
 	_ "net/http/pprof"
 	"os"
 
-	"github.com/blinklabs-io/node"
-	"github.com/blinklabs-io/node/config/cardano"
-	"github.com/blinklabs-io/node/internal/config"
+	"github.com/blinklabs-io/dingo"
+	"github.com/blinklabs-io/dingo/config/cardano"
+	"github.com/blinklabs-io/dingo/internal/config"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -66,23 +66,23 @@ func Run(logger *slog.Logger) error {
 		),
 		"component", "node",
 	)
-	n, err := node.New(
-		node.NewConfig(
-			node.WithIntersectTip(cfg.IntersectTip),
-			node.WithLogger(logger),
-			node.WithDatabasePath(cfg.DatabasePath),
-			node.WithNetwork(cfg.Network),
-			node.WithCardanoNodeConfig(nodeCfg),
-			node.WithListeners(
-				node.ListenerConfig{
+	d, err := dingo.New(
+		dingo.NewConfig(
+			dingo.WithIntersectTip(cfg.IntersectTip),
+			dingo.WithLogger(logger),
+			dingo.WithDatabasePath(cfg.DatabasePath),
+			dingo.WithNetwork(cfg.Network),
+			dingo.WithCardanoNodeConfig(nodeCfg),
+			dingo.WithListeners(
+				dingo.ListenerConfig{
 					Listener: l,
 				},
 			),
 			// Enable metrics with default prometheus registry
-			node.WithPrometheusRegistry(prometheus.DefaultRegisterer),
+			dingo.WithPrometheusRegistry(prometheus.DefaultRegisterer),
 			// TODO: make this configurable
-			//node.WithTracing(true),
-			node.WithTopologyConfig(config.GetTopologyConfig()),
+			//dingo.WithTracing(true),
+			dingo.WithTopologyConfig(config.GetTopologyConfig()),
 		),
 	)
 	if err != nil {
@@ -106,7 +106,7 @@ func Run(logger *slog.Logger) error {
 			os.Exit(1)
 		}
 	}()
-	if err := n.Run(); err != nil {
+	if err := d.Run(); err != nil {
 		return err
 	}
 	return nil

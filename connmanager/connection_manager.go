@@ -20,7 +20,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/blinklabs-io/node/topology"
+	"github.com/blinklabs-io/dingo/topology"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 )

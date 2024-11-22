@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/blinklabs-io/node/database"
-	"github.com/blinklabs-io/node/event"
-	"github.com/blinklabs-io/node/state/models"
+	"github.com/blinklabs-io/dingo/database"
+	"github.com/blinklabs-io/dingo/event"
+	"github.com/blinklabs-io/dingo/state/models"
 )
 
 const (

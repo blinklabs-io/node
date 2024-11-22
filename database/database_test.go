@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blinklabs-io/node/database"
+	"github.com/blinklabs-io/dingo/database"
 	"gorm.io/gorm"
 )
 

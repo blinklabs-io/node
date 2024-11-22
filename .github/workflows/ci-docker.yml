@@ -6,7 +6,7 @@ on:
     paths: ['Dockerfile','cmd/**','docs/**','internal/**','go.*','.github/workflows/ci-docker.yml']
 
 env:
-  GHCR_IMAGE_NAME: ghcr.io/blinklabs-io/node
+  GHCR_IMAGE_NAME: ghcr.io/blinklabs-io/dingo
 
 jobs:
   docker:

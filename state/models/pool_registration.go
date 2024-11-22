@@ -17,7 +17,7 @@ package models
 import (
 	"net"
 
-	"github.com/blinklabs-io/node/database"
+	"github.com/blinklabs-io/dingo/database"
 )
 
 type PoolRegistration struct {

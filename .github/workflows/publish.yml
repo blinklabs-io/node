@@ -56,13 +56,13 @@ jobs:
       - name: Upload release asset
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          _filename=node-${{ env.RELEASE_TAG }}-${{ matrix.os }}-${{ matrix.arch }}
-          mv node ${_filename}
+          _filename=dingo-${{ env.RELEASE_TAG }}-${{ matrix.os }}-${{ matrix.arch }}
+          mv dingo ${_filename}
           curl \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/octet-stream" \
             --data-binary @${_filename} \
-            https://uploads.github.com/repos/${{ github.repository_owner }}/node/releases/${{ needs.create-draft-release.outputs.RELEASE_ID }}/assets?name=${_filename}
+            https://uploads.github.com/repos/${{ github.repository_owner }}/dingo/releases/${{ needs.create-draft-release.outputs.RELEASE_ID }}/assets?name=${_filename}
 
   build-images:
     runs-on: ubuntu-latest
@@ -89,7 +89,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            blinklabs/node
+            blinklabs/dingo
             ghcr.io/${{ github.repository }}
           tags: |
             # Only version, no revision
@@ -111,9 +111,9 @@ jobs:
         with:
           username: blinklabs
           password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: blinklabs/node
+          repository: blinklabs/dingo
           readme-filepath: ./README.md
-          short-description: "Cardano Blockchain Node"
+          short-description: "Dingo is a Cardano blockchain data node"
 
   finalize-release:
     runs-on: ubuntu-latest

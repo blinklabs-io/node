@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blinklabs-io/node/connmanager"
+	"github.com/blinklabs-io/dingo/connmanager"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/protocol/keepalive"

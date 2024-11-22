@@ -17,10 +17,10 @@ package eras
 import (
 	"fmt"
 
+	"github.com/blinklabs-io/dingo/config/cardano"
 	"github.com/blinklabs-io/gouroboros/cbor"
 	"github.com/blinklabs-io/gouroboros/ledger/allegra"
 	"github.com/blinklabs-io/gouroboros/ledger/mary"
-	"github.com/blinklabs-io/node/config/cardano"
 )
 
 var MaryEraDesc = EraDesc{

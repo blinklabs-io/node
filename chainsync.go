@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package node
+package dingo
 
 import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/blinklabs-io/node/event"
-	"github.com/blinklabs-io/node/state"
+	"github.com/blinklabs-io/dingo/event"
+	"github.com/blinklabs-io/dingo/state"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/ledger"

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package node
+package dingo
 
 import (
 	"context"
@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/blinklabs-io/node/chainsync"
-	"github.com/blinklabs-io/node/connmanager"
-	"github.com/blinklabs-io/node/event"
-	"github.com/blinklabs-io/node/mempool"
-	"github.com/blinklabs-io/node/state"
+	"github.com/blinklabs-io/dingo/chainsync"
+	"github.com/blinklabs-io/dingo/connmanager"
+	"github.com/blinklabs-io/dingo/event"
+	"github.com/blinklabs-io/dingo/mempool"
+	"github.com/blinklabs-io/dingo/state"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 )

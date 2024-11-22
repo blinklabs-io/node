@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package node
+package dingo
 
 import (
 	"context"
@@ -72,7 +72,7 @@ func (n *Node) startListener(l ListenerConfig) error {
 			)
 		*/
 	} else {
-		// Node-to-node
+		// Node-to-Node
 		defaultConnOpts = append(
 			defaultConnOpts,
 			ouroboros.WithPeerSharingConfig(

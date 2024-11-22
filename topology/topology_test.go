@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/blinklabs-io/node/topology"
+	"github.com/blinklabs-io/dingo/topology"
 )
 
 type topologyTestDefinition struct {

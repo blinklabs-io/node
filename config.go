@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package node
+package dingo
 
 import (
 	"fmt"
 	"io"
 	"log/slog"
 
-	"github.com/blinklabs-io/node/config/cardano"
-	"github.com/blinklabs-io/node/topology"
+	"github.com/blinklabs-io/dingo/config/cardano"
+	"github.com/blinklabs-io/dingo/topology"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
@@ -98,7 +98,7 @@ func (n *Node) configValidate() error {
 // ConfigOptionFunc is a type that represents functions that modify the Connection config
 type ConfigOptionFunc func(*Config)
 
-// NewConfig creates a new node config with the specified options
+// NewConfig creates a new dingo config with the specified options
 func NewConfig(opts ...ConfigOptionFunc) Config {
 	c := Config{
 		// Default logger will throw away logs
@@ -114,7 +114,7 @@ func NewConfig(opts ...ConfigOptionFunc) Config {
 }
 
 // WithCardanoNodeConfig specifies the CardanoNodeConfig object to use. This is mostly used for loading genesis config files
-// referenced by the node config
+// referenced by the dingo config
 func WithCardanoNodeConfig(
 	cardanoNodeConfig *cardano.CardanoNodeConfig,
 ) ConfigOptionFunc {

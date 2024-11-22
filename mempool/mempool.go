@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blinklabs-io/node/event"
+	"github.com/blinklabs-io/dingo/event"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/prometheus/client_golang/prometheus"
