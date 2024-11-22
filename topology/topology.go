@@ -20,7 +20,7 @@ import (
 	"os"
 )
 
-// TopologyConfig represents a Cardano node topology config
+// TopologyConfig represents a cardano-node topology config
 type TopologyConfig struct {
 	LocalRoots         []TopologyConfigP2PLocalRoot     `json:"localRoots"`
 	PublicRoots        []TopologyConfigP2PPublicRoot    `json:"publicRoots"`

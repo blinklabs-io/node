@@ -19,15 +19,15 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/blinklabs-io/node/internal/node"
-	"github.com/blinklabs-io/node/internal/version"
+	"github.com/blinklabs-io/dingo/internal/node"
+	"github.com/blinklabs-io/dingo/internal/version"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/automaxprocs/maxprocs"
 )
 
 const (
-	programName = "node"
+	programName = "dingo"
 )
 
 func slogPrintf(format string, v ...any) {

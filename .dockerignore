@@ -1,5 +1,5 @@
+.dingo/
 .github/
-.node/
+dingo
 Dockerfile
-node
 README.md

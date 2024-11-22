@@ -18,8 +18,8 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/blinklabs-io/dingo/database"
 	"github.com/blinklabs-io/gouroboros/ledger"
-	"github.com/blinklabs-io/node/database"
 	"github.com/dgraph-io/badger/v4"
 	"gorm.io/gorm"
 )

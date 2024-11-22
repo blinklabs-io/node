@@ -15,8 +15,8 @@
 package eras
 
 import (
+	"github.com/blinklabs-io/dingo/config/cardano"
 	"github.com/blinklabs-io/gouroboros/ledger/byron"
-	"github.com/blinklabs-io/node/config/cardano"
 )
 
 var ByronEraDesc = EraDesc{

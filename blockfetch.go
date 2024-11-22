@@ -12,20 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package node
+package dingo
 
 import (
 	"encoding/hex"
 	"fmt"
 	"time"
 
+	"github.com/blinklabs-io/dingo/event"
+	"github.com/blinklabs-io/dingo/state"
+
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/ledger"
 	"github.com/blinklabs-io/gouroboros/protocol/blockfetch"
 	oblockfetch "github.com/blinklabs-io/gouroboros/protocol/blockfetch"
 	ocommon "github.com/blinklabs-io/gouroboros/protocol/common"
-	"github.com/blinklabs-io/node/event"
-	"github.com/blinklabs-io/node/state"
 )
 
 func (n *Node) blockfetchServerConnOpts() []oblockfetch.BlockFetchOptionFunc {

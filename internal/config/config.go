@@ -17,7 +17,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/blinklabs-io/node/topology"
+	"github.com/blinklabs-io/dingo/topology"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/kelseyhightower/envconfig"
@@ -37,7 +37,7 @@ type Config struct {
 var globalConfig = &Config{
 	BindAddr:      "0.0.0.0",
 	CardanoConfig: "./configs/cardano/preview/config.json",
-	DatabasePath:  ".node",
+	DatabasePath:  ".dingo",
 	IntersectTip:  false,
 	Network:       "preview",
 	MetricsPort:   12798,

@@ -15,8 +15,8 @@
 package state
 
 import (
-	"github.com/blinklabs-io/node/event"
-	"github.com/blinklabs-io/node/state/models"
+	"github.com/blinklabs-io/dingo/event"
+	"github.com/blinklabs-io/dingo/state/models"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
 	"github.com/blinklabs-io/gouroboros/ledger"

@@ -1,8 +1,8 @@
-module github.com/blinklabs-io/node
+module github.com/blinklabs-io/dingo
 
 go 1.22
 
-toolchain go1.22.6
+toolchain go1.22.8
 
 require (
 	github.com/blinklabs-io/gouroboros v0.104.2

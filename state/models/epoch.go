@@ -14,7 +14,7 @@
 
 package models
 
-import "github.com/blinklabs-io/node/database"
+import "github.com/blinklabs-io/dingo/database"
 
 type Epoch struct {
 	ID uint `gorm:"primarykey"`

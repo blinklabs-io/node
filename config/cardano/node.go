@@ -66,7 +66,7 @@ func NewCardanoNodeConfigFromFile(file string) (*CardanoNodeConfig, error) {
 	return c, nil
 }
 
-// ByronGenesis loads and returns the Byron genesis config specified in the node config
+// ByronGenesis loads and returns the Byron genesis config specified in the cardano-node config
 func (c *CardanoNodeConfig) ByronGenesis() (*byron.ByronGenesis, error) {
 	if c.byronGenesis != nil {
 		return c.byronGenesis, nil
@@ -81,7 +81,7 @@ func (c *CardanoNodeConfig) ByronGenesis() (*byron.ByronGenesis, error) {
 	return &ret, err
 }
 
-// ShelleyGenesis loads and returns the Shelley genesis config specified in the node config
+// ShelleyGenesis loads and returns the Shelley genesis config specified in the cardano-node config
 func (c *CardanoNodeConfig) ShelleyGenesis() (*shelley.ShelleyGenesis, error) {
 	if c.shelleyGenesis != nil {
 		return c.shelleyGenesis, nil
@@ -96,7 +96,7 @@ func (c *CardanoNodeConfig) ShelleyGenesis() (*shelley.ShelleyGenesis, error) {
 	return &ret, err
 }
 
-// AlonzoGenesis loads and returns the Alonzo genesis config specified in the node config
+// AlonzoGenesis loads and returns the Alonzo genesis config specified in the cardano-node config
 func (c *CardanoNodeConfig) AlonzoGenesis() (*alonzo.AlonzoGenesis, error) {
 	if c.alonzoGenesis != nil {
 		return c.alonzoGenesis, nil
@@ -111,7 +111,7 @@ func (c *CardanoNodeConfig) AlonzoGenesis() (*alonzo.AlonzoGenesis, error) {
 	return &ret, err
 }
 
-// ConwayGenesis loads and returns the Conway genesis config specified in the node config
+// ConwayGenesis loads and returns the Conway genesis config specified in the cardano-node config
 func (c *CardanoNodeConfig) ConwayGenesis() (*conway.ConwayGenesis, error) {
 	if c.conwayGenesis != nil {
 		return c.conwayGenesis, nil
