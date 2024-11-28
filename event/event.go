@@ -46,7 +46,7 @@ func NewEvent(eventType EventType, eventData any) Event {
 }
 
 type EventBus struct {
-	sync.Mutex
+	mu          sync.RWMutex
 	subscribers map[EventType]map[EventSubscriberId]chan Event
 	lastSubId   EventSubscriberId
 	metrics     eventMetrics
@@ -65,8 +65,8 @@ func NewEventBus(promRegistry prometheus.Registerer) *EventBus {
 func (e *EventBus) Subscribe(
 	eventType EventType,
 ) (EventSubscriberId, <-chan Event) {
-	e.Lock()
-	defer e.Unlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	// Create event channel
 	evtCh := make(chan Event, EventQueueSize)
 	// Increment subscriber ID
@@ -102,8 +102,8 @@ func (e *EventBus) SubscribeFunc(
 
 // Unsubscribe stops delivery of events for a particular type for an existing subscriber
 func (e *EventBus) Unsubscribe(eventType EventType, subId EventSubscriberId) {
-	e.Lock()
-	defer e.Unlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	if evtTypeSubs, ok := e.subscribers[eventType]; ok {
 		delete(evtTypeSubs, subId)
 	}
@@ -112,9 +112,9 @@ func (e *EventBus) Unsubscribe(eventType EventType, subId EventSubscriberId) {
 
 // Publish allows a producer to send an event of a particular type to all subscribers
 func (e *EventBus) Publish(eventType EventType, evt Event) {
-	e.Lock()
+	e.mu.RLock()
 	subs, ok := e.subscribers[eventType]
-	e.Unlock()
+	e.mu.RUnlock()
 	if ok {
 		for _, subCh := range subs {
 			// NOTE: this is purposely a blocking operation to prevent dropping data
