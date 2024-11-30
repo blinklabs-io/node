@@ -5,7 +5,7 @@ go 1.22
 toolchain go1.22.8
 
 require (
-	github.com/blinklabs-io/gouroboros v0.104.2
+	github.com/blinklabs-io/gouroboros v0.105.0
 	github.com/blinklabs-io/ouroboros-mock v0.3.5
 	github.com/dgraph-io/badger/v4 v4.4.0
 	github.com/glebarez/sqlite v1.11.0
