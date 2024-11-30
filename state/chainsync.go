@@ -15,6 +15,7 @@
 package state
 
 import (
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -190,6 +191,21 @@ func (ls *LedgerState) processBlockEvent(
 	txn *database.Txn,
 	e BlockfetchEvent,
 ) error {
+	// Check that the block fits on our current chain
+	if ls.currentTip.BlockNumber > 0 {
+		prevHashBytes, err := hex.DecodeString(e.Block.PrevHash())
+		if err != nil {
+			return err
+		}
+		if string(prevHashBytes) != string(ls.currentTip.Point.Hash) {
+			return fmt.Errorf(
+				"block %x (with prev hash %x) does not fit on current chain tip (%x)",
+				e.Point.Hash,
+				prevHashBytes,
+				ls.currentTip.Point.Hash,
+			)
+		}
+	}
 	tmpBlock := models.Block{
 		Slot: e.Point.Slot,
 		Hash: e.Point.Hash,
