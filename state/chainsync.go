@@ -201,11 +201,7 @@ func (ls *LedgerState) vacuumMetadata() error {
 	return nil
 }
 
-func (ls *LedgerState) processBlockEvent(
-	txn *database.Txn,
-	e BlockfetchEvent,
-) error {
-	// Check that the block fits on our current chain
+func (ls *LedgerState) validateBlock(e BlockfetchEvent) error {
 	if ls.currentTip.BlockNumber > 0 {
 		prevHashBytes, err := hex.DecodeString(e.Block.PrevHash())
 		if err != nil {
@@ -220,16 +216,13 @@ func (ls *LedgerState) processBlockEvent(
 			)
 		}
 	}
-	tmpBlock := models.Block{
-		Slot: e.Point.Slot,
-		Hash: e.Point.Hash,
-		// TODO: figure out something for Byron. this won't work, since the
-		// block number isn't stored in the block itself
-		Number: e.Block.BlockNumber(),
-		Type:   e.Type,
-		Cbor:   e.Block.Cbor(),
-	}
-	// Special handling for genesis block
+	return nil
+}
+
+func (ls *LedgerState) processGenesisBlock(
+	txn *database.Txn,
+	e BlockfetchEvent,
+) error {
 	if ls.currentEpoch.ID == 0 {
 		// Check for era change
 		if uint(e.Block.Era().Id) != ls.currentEra.Id {
@@ -265,6 +258,13 @@ func (ls *LedgerState) processBlockEvent(
 			"component", "ledger",
 		)
 	}
+	return nil
+}
+
+func (ls *LedgerState) processEpochRollover(
+	txn *database.Txn,
+	e BlockfetchEvent,
+) error {
 	// Check for epoch rollover
 	if e.Point.Slot > ls.currentEpoch.StartSlot+uint64(
 		ls.currentEpoch.LengthInSlots,
@@ -307,6 +307,25 @@ func (ls *LedgerState) processBlockEvent(
 			)
 		}
 	}
+	return nil
+}
+
+func (ls *LedgerState) processBlockEvent(
+	txn *database.Txn,
+	e BlockfetchEvent,
+) error {
+	// Check that the block fits on our current chain
+	if err := ls.validateBlock(e); err != nil {
+		return err
+	}
+	// Special handling for genesis block
+	if err := ls.processGenesisBlock(txn, e); err != nil {
+		return err
+	}
+	// Check for epoch rollover
+	if err := ls.processEpochRollover(txn, e); err != nil {
+		return err
+	}
 	// TODO: track this using protocol params and hard forks
 	// Check for era change
 	if uint(e.Block.Era().Id) != ls.currentEra.Id {
@@ -319,6 +338,15 @@ func (ls *LedgerState) processBlockEvent(
 		}
 	}
 	// Add block to database
+	tmpBlock := models.Block{
+		Slot: e.Point.Slot,
+		Hash: e.Point.Hash,
+		// TODO: figure out something for Byron. this won't work, since the
+		// block number isn't stored in the block itself
+		Number: e.Block.BlockNumber(),
+		Type:   e.Type,
+		Cbor:   e.Block.Cbor(),
+	}
 	if err := ls.addBlock(txn, tmpBlock); err != nil {
 		return fmt.Errorf("add block: %w", err)
 	}
