@@ -18,7 +18,9 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"slices"
 	"strconv"
+	"syscall"
 	"time"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
@@ -28,6 +30,7 @@ import (
 	"github.com/blinklabs-io/gouroboros/protocol/txsubmission"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -157,7 +160,7 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 			fmt.Sprintf(":%d", n.config.outboundSourcePort),
 		)
 		dialer.LocalAddr = clientAddr
-		dialer.Control = socketControl
+		dialer.Control = outboundSocketControl
 	}
 	n.config.logger.Debug(
 		fmt.Sprintf(
@@ -182,7 +185,7 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 		ouroboros.WithPeerSharing(n.config.peerSharing),
 		ouroboros.WithPeerSharingConfig(
 			peersharing.NewConfig(
-				mergeConnOpts(
+				slices.Concat(
 					n.peersharingClientConnOpts(),
 					n.peersharingServerConnOpts(),
 				)...,
@@ -190,7 +193,7 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 		),
 		ouroboros.WithTxSubmissionConfig(
 			txsubmission.NewConfig(
-				mergeConnOpts(
+				slices.Concat(
 					n.txsubmissionClientConnOpts(),
 					n.txsubmissionServerConnOpts(),
 				)...,
@@ -198,7 +201,7 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 		),
 		ouroboros.WithChainSyncConfig(
 			chainsync.NewConfig(
-				mergeConnOpts(
+				slices.Concat(
 					n.chainsyncClientConnOpts(),
 					n.chainsyncServerConnOpts(),
 				)...,
@@ -206,7 +209,7 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 		),
 		ouroboros.WithBlockFetchConfig(
 			blockfetch.NewConfig(
-				mergeConnOpts(
+				slices.Concat(
 					n.blockfetchClientConnOpts(),
 					n.blockfetchServerConnOpts(),
 				)...,
@@ -297,4 +300,33 @@ func (n *Node) reconnectOutboundConnection(peer outboundPeer) {
 		peer.ReconnectCount = 0
 		return
 	}
+}
+
+// outboundSocketControl is a helper function for setting socket options outbound sockets
+func outboundSocketControl(network, address string, c syscall.RawConn) error {
+	var innerErr error
+	err := c.Control(func(fd uintptr) {
+		err := unix.SetsockoptInt(
+			int(fd),
+			unix.SOL_SOCKET,
+			unix.SO_REUSEADDR,
+			1,
+		)
+		if err != nil {
+			innerErr = err
+			return
+		}
+		err = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+		if err != nil {
+			innerErr = err
+			return
+		}
+	})
+	if innerErr != nil {
+		return innerErr
+	}
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -20,6 +20,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/blinklabs-io/dingo/event"
 	"github.com/blinklabs-io/dingo/topology"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
@@ -72,7 +73,9 @@ type ConnectionManager struct {
 
 type ConnectionManagerConfig struct {
 	Logger         *slog.Logger
+	EventBus       *event.EventBus
 	ConnClosedFunc ConnectionManagerConnClosedFunc
+	Listeners      []ListenerConfig
 }
 
 type ConnectionManagerHost struct {
@@ -85,12 +88,20 @@ func NewConnectionManager(cfg ConnectionManagerConfig) *ConnectionManager {
 	if cfg.Logger == nil {
 		cfg.Logger = slog.New(slog.NewJSONHandler(io.Discard, nil))
 	}
+	cfg.Logger = cfg.Logger.With("component", "connmanager")
 	return &ConnectionManager{
 		config: cfg,
 		connections: make(
 			map[ouroboros.ConnectionId]*ConnectionManagerConnection,
 		),
 	}
+}
+
+func (c *ConnectionManager) Start() error {
+	if err := c.startListeners(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *ConnectionManager) AddHost(
@@ -113,7 +124,6 @@ func (c *ConnectionManager) AddHost(
 			"connmanager: adding host: %+v",
 			cmHost,
 		),
-		"component", "connmanager",
 	)
 
 	c.hosts = append(
