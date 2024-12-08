@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dingo
+package connmanager
 
 import (
 	"context"
@@ -34,7 +34,16 @@ type ListenerConfig struct {
 	ReuseAddress  bool
 }
 
-func (n *Node) startListener(l ListenerConfig) error {
+func (c *ConnectionManager) startListeners() error {
+	for _, l := range c.config.Listeners {
+		if err := c.startListener(l); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *ConnectionManager) startListener(l ListenerConfig) error {
 	// Create listener if none is provided
 	if l.Listener == nil {
 		listenConfig := net.ListenConfig{}
@@ -53,7 +62,7 @@ func (n *Node) startListener(l ListenerConfig) error {
 	}
 	// Build connection options
 	defaultConnOpts := []ouroboros.ConnectionOptionFunc{
-		ouroboros.WithLogger(n.config.logger),
+		ouroboros.WithLogger(c.config.Logger),
 		ouroboros.WithNetworkMagic(n.config.networkMagic),
 		ouroboros.WithNodeToNode(!l.UseNtC),
 		ouroboros.WithServer(true),

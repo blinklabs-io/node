@@ -73,6 +73,7 @@ type ConnectionManager struct {
 type ConnectionManagerConfig struct {
 	Logger         *slog.Logger
 	ConnClosedFunc ConnectionManagerConnClosedFunc
+	Listeners      []ListenerConfig
 }
 
 type ConnectionManagerHost struct {
@@ -91,6 +92,13 @@ func NewConnectionManager(cfg ConnectionManagerConfig) *ConnectionManager {
 			map[ouroboros.ConnectionId]*ConnectionManagerConnection,
 		),
 	}
+}
+
+func (c *ConnectionManager) Start() error {
+	if err := c.startListeners(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *ConnectionManager) AddHost(

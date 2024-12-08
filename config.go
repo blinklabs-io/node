@@ -20,6 +20,7 @@ import (
 	"log/slog"
 
 	"github.com/blinklabs-io/dingo/config/cardano"
+	"github.com/blinklabs-io/dingo/connmanager"
 	"github.com/blinklabs-io/dingo/topology"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
@@ -33,7 +34,7 @@ type Config struct {
 	intersectPoints    []ocommon.Point
 	intersectTip       bool
 	logger             *slog.Logger
-	listeners          []ListenerConfig
+	listeners          []connmanager.ListenerConfig
 	network            string
 	networkMagic       uint32
 	outboundSourcePort int
@@ -152,7 +153,7 @@ func WithLogger(logger *slog.Logger) ConfigOptionFunc {
 }
 
 // WithListeners specifies the listener config(s) to use
-func WithListeners(listeners ...ListenerConfig) ConfigOptionFunc {
+func WithListeners(listeners ...connmanager.ListenerConfig) ConfigOptionFunc {
 	return func(c *Config) {
 		c.listeners = append(c.listeners, listeners...)
 	}

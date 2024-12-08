@@ -94,14 +94,20 @@ func (n *Node) Run() error {
 		connmanager.ConnectionManagerConfig{
 			Logger:         n.config.logger,
 			ConnClosedFunc: n.connectionManagerConnClosed,
+			Listeners:      n.config.listeners,
 		},
 	)
 	// Start listeners
-	for _, l := range n.config.listeners {
-		if err := n.startListener(l); err != nil {
-			return err
-		}
+	if err := n.connManager.Start(); err != nil {
+		return err
 	}
+	/*
+		for _, l := range n.config.listeners {
+			if err := n.startListener(l); err != nil {
+				return err
+			}
+		}
+	*/
 	// Start outbound connections
 	if n.config.topologyConfig != nil {
 		n.connManager.AddHostsFromTopology(n.config.topologyConfig)
