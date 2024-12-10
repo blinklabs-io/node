@@ -44,6 +44,10 @@ jobs:
         os: [linux, darwin]
         arch: [amd64, arm64]
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
     needs: [create-draft-release]
     steps:
       - run: "echo \"RELEASE_TAG=${GITHUB_REF#refs/tags/}\" >> $GITHUB_ENV"
@@ -63,9 +67,18 @@ jobs:
             -H "Content-Type: application/octet-stream" \
             --data-binary @${_filename} \
             https://uploads.github.com/repos/${{ github.repository_owner }}/dingo/releases/${{ needs.create-draft-release.outputs.RELEASE_ID }}/assets?name=${_filename}
+      - name: Attest binary
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: 'dingo-${{ env.RELEASE_TAG }}-${{ matrix.os }}-${{ matrix.arch }}'
 
   build-images:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+      packages: write
     needs: [create-draft-release]
     steps:
       - run: "echo \"RELEASE_TAG=${GITHUB_REF#refs/tags/}\" >> $GITHUB_ENV"
@@ -99,12 +112,21 @@ jobs:
             # semver
             type=semver,pattern={{version}}
       - name: Build images
+        id: push
         uses: docker/build-push-action@v6
         with:
           outputs: "type=registry,push=true"
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: Attest images
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            index.docker.io/blinklabs/dingo
+            ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
       # Update Docker Hub from README
       - name: Docker Hub Description
         uses: peter-evans/dockerhub-description@v4
