@@ -9,9 +9,11 @@
   <a href="https://discord.gg/5fPRZnX4qW"><img src="https://img.shields.io/badge/Discord-7289DA?style=flat&logo=discord&logoColor=white" alt="Discord"></a>
 </div>
 
+# Dingo
+
 This is a work in progress and is currently under heavy development
 
 <div align="center">
-  <img src="./.github/node-20240528.png" alt="node screenshot" width="640">
+  <img src="./.github/dingo-20241210.png" alt="dingo screenshot" width="640">
 </div>
 
