@@ -83,6 +83,8 @@ jobs:
     steps:
       - run: "echo \"RELEASE_TAG=${GITHUB_REF#refs/tags/}\" >> $GITHUB_ENV"
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
