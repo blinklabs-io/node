@@ -70,7 +70,7 @@ jobs:
       - name: Attest binary
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: 'dingo-${{ env.RELEASE_TAG }}-${{ matrix.os }}-${{ matrix.arch }}'
+          subject-path: 'dingo'
 
   build-images:
     runs-on: ubuntu-latest
