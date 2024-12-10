@@ -61,7 +61,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           _filename=dingo-${{ env.RELEASE_TAG }}-${{ matrix.os }}-${{ matrix.arch }}
-          mv dingo ${_filename}
+          cp dingo ${_filename}
           curl \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/octet-stream" \
