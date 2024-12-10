@@ -119,16 +119,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-      - name: Attest Docker Hub image
+      - name: Attest image
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: index.docker.io/blinklabs/dingo
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
-      - name: Attest GHCR image
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: ghcr.io/${{ github.repository }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
       # Update Docker Hub from README
