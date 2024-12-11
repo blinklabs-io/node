@@ -12,26 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package connmanager
+package peergov
 
 import (
-	"net"
-
 	ouroboros "github.com/blinklabs-io/gouroboros"
 )
 
 const (
-	InboundConnectionEventType = "connmanager.inbound-conn"
-	ConnectionClosedEventType  = "connmanager.conn-closed"
+	OutboundConnectionEventType = "peergov.outbound-conn"
 )
 
-type InboundConnectionEvent struct {
+type OutboundConnectionEvent struct {
 	ConnectionId ouroboros.ConnectionId
-	LocalAddr    net.Addr
-	RemoteAddr   net.Addr
-}
-
-type ConnectionClosedEvent struct {
-	ConnectionId ouroboros.ConnectionId
-	Error        error
 }

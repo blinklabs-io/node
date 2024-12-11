@@ -40,15 +40,12 @@ func (n *Node) peersharingShareRequest(
 ) ([]opeersharing.PeerAddress, error) {
 	peers := []opeersharing.PeerAddress{}
 	var cnt int
-	for _, peer := range n.outboundConns {
+	for _, peer := range n.peerGov.GetPeers() {
 		cnt++
 		if cnt > amount {
 			break
 		}
-		if cnt > len(n.outboundConns) {
-			break
-		}
-		if peer.sharable {
+		if peer.Sharable {
 			host, port, err := net.SplitHostPort(peer.Address)
 			if err != nil {
 				// Skip on error

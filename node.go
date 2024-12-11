@@ -19,12 +19,12 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"sync"
 
 	"github.com/blinklabs-io/dingo/chainsync"
 	"github.com/blinklabs-io/dingo/connmanager"
 	"github.com/blinklabs-io/dingo/event"
 	"github.com/blinklabs-io/dingo/mempool"
+	"github.com/blinklabs-io/dingo/peergov"
 	"github.com/blinklabs-io/dingo/state"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
@@ -35,15 +35,14 @@ import (
 )
 
 type Node struct {
-	config             Config
-	connManager        *connmanager.ConnectionManager
-	chainsyncState     *chainsync.State
-	eventBus           *event.EventBus
-	outboundConns      map[ouroboros.ConnectionId]outboundPeer
-	outboundConnsMutex sync.Mutex
-	mempool            *mempool.Mempool
-	ledgerState        *state.LedgerState
-	shutdownFuncs      []func(context.Context) error
+	config         Config
+	connManager    *connmanager.ConnectionManager
+	peerGov        *peergov.PeerGovernor
+	chainsyncState *chainsync.State
+	eventBus       *event.EventBus
+	mempool        *mempool.Mempool
+	ledgerState    *state.LedgerState
+	shutdownFuncs  []func(context.Context) error
 }
 
 func New(cfg Config) (*Node, error) {
@@ -56,7 +55,6 @@ func New(cfg Config) (*Node, error) {
 			eventBus,
 			cfg.promRegistry,
 		),
-		outboundConns: make(map[ouroboros.ConnectionId]outboundPeer),
 	}
 	if err := n.configPopulateNetworkMagic(); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %s", err)
@@ -98,11 +96,21 @@ func (n *Node) Run() error {
 	if err := n.configureConnManager(); err != nil {
 		return err
 	}
-	// Start outbound connections
+	// Configure peer governor
+	n.peerGov = peergov.NewPeerGovernor(
+		peergov.PeerGovernorConfig{
+			Logger:      n.config.logger,
+			EventBus:    n.eventBus,
+			ConnManager: n.connManager,
+		},
+	)
+	n.eventBus.SubscribeFunc(peergov.OutboundConnectionEventType, n.handleOutboundConnEvent)
 	if n.config.topologyConfig != nil {
-		n.connManager.AddHostsFromTopology(n.config.topologyConfig)
+		n.peerGov.LoadTopologyConfig(n.config.topologyConfig)
 	}
-	n.startOutboundConnections()
+	if err := n.peerGov.Start(); err != nil {
+		return err
+	}
 
 	// Wait forever
 	select {}
@@ -174,7 +182,6 @@ func (n *Node) configureConnManager() error {
 		connmanager.ConnectionManagerConfig{
 			Logger:             n.config.logger,
 			EventBus:           n.eventBus,
-			ConnClosedFunc:     n.connectionManagerConnClosed,
 			Listeners:          tmpListeners,
 			OutboundSourcePort: n.config.outboundSourcePort,
 			OutboundConnOpts: []ouroboros.ConnectionOptionFunc{
@@ -218,6 +225,8 @@ func (n *Node) configureConnManager() error {
 			},
 		},
 	)
+	// Subscribe to connection closed events
+	n.eventBus.SubscribeFunc(connmanager.ConnectionClosedEventType, n.handleConnClosedEvent)
 	// Start listeners
 	if err := n.connManager.Start(); err != nil {
 		return err
@@ -225,42 +234,35 @@ func (n *Node) configureConnManager() error {
 	return nil
 }
 
-func (n *Node) connectionManagerConnClosed(
-	connId ouroboros.ConnectionId,
-	err error,
-) {
-	if err != nil {
-		n.config.logger.Error(
-			fmt.Sprintf(
-				"unexpected connection failure: %s",
-				err,
-			),
-			"component", "network",
-			"connection_id", connId.String(),
-		)
-	} else {
-		n.config.logger.Info("connection closed",
-			"component", "network",
-			"connection_id", connId.String(),
-		)
-	}
-	conn := n.connManager.GetConnectionById(connId)
-	if conn == nil {
-		return
-	}
-	// Remove connection
-	n.connManager.RemoveConnection(connId)
+func (n *Node) handleConnClosedEvent(evt event.Event) {
+	e := evt.Data.(connmanager.ConnectionClosedEvent)
+	connId := e.ConnectionId
 	// Remove any chainsync client state
 	n.chainsyncState.RemoveClient(connId)
 	// Remove mempool consumer
 	n.mempool.RemoveConsumer(connId)
-	// Outbound connections
-	n.outboundConnsMutex.Lock()
-	if peer, ok := n.outboundConns[connId]; ok {
-		// Release chainsync client
-		n.chainsyncState.RemoveClientConnId(connId)
-		// Reconnect outbound connection
-		go n.reconnectOutboundConnection(peer)
+	// Release chainsync client
+	n.chainsyncState.RemoveClientConnId(connId)
+}
+
+func (n *Node) handleOutboundConnEvent(evt event.Event) {
+	e := evt.Data.(peergov.OutboundConnectionEvent)
+	connId := e.ConnectionId
+	// TODO: replace this with handling for multiple chainsync clients
+	// Start chainsync client if we don't have another
+	n.chainsyncState.Lock()
+	defer n.chainsyncState.Unlock()
+	chainsyncClientConnId := n.chainsyncState.GetClientConnId()
+	if chainsyncClientConnId == nil {
+		if err := n.chainsyncClientStart(connId); err != nil {
+			n.config.logger.Error("failed to start chainsync client", "error", err)
+			return
+		}
+		n.chainsyncState.SetClientConnId(connId)
 	}
-	n.outboundConnsMutex.Unlock()
+	// Start txsubmission client
+	if err := n.txsubmissionClientStart(connId); err != nil {
+		n.config.logger.Error("failed to start chainsync client", "error", err)
+		return
+	}
 }
