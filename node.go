@@ -27,6 +27,10 @@ import (
 	"github.com/blinklabs-io/dingo/state"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
+	oblockfetch "github.com/blinklabs-io/gouroboros/protocol/blockfetch"
+	ochainsync "github.com/blinklabs-io/gouroboros/protocol/chainsync"
+	opeersharing "github.com/blinklabs-io/gouroboros/protocol/peersharing"
+	otxsubmission "github.com/blinklabs-io/gouroboros/protocol/txsubmission"
 )
 
 type Node struct {
@@ -90,17 +94,8 @@ func (n *Node) Run() error {
 		n.ledgerState,
 	)
 	// Configure connection manager
-	n.connManager = connmanager.NewConnectionManager(
-		connmanager.ConnectionManagerConfig{
-			Logger:         n.config.logger,
-			ConnClosedFunc: n.connectionManagerConnClosed,
-		},
-	)
-	// Start listeners
-	for _, l := range n.config.listeners {
-		if err := n.startListener(l); err != nil {
-			return err
-		}
+	if err := n.configureConnManager(); err != nil {
+		return err
 	}
 	// Start outbound connections
 	if n.config.topologyConfig != nil {
@@ -128,6 +123,65 @@ func (n *Node) shutdown() error {
 	}
 	n.shutdownFuncs = nil
 	return err
+}
+
+func (n *Node) configureConnManager() error {
+	// Configure listeners
+	tmpListeners := make([]ListenerConfig, len(n.config.listeners))
+	for idx, l := range n.config.listeners {
+		if l.UseNtC {
+			// Node-to-client
+			l.ConnectionOpts = append(
+				l.ConnectionOpts,
+				ouroboros.WithNetworkMagic(n.config.networkMagic),
+				// TODO: add localtxsubmission
+				// TODO: add localstatequery
+				// TODO: add localtxmonitor
+			)
+		} else {
+			// Node-to-node config
+			l.ConnectionOpts = append(
+				l.ConnectionOpts,
+				ouroboros.WithPeerSharing(n.config.peerSharing),
+				ouroboros.WithNetworkMagic(n.config.networkMagic),
+				ouroboros.WithPeerSharingConfig(
+					opeersharing.NewConfig(
+						n.peersharingServerConnOpts()...,
+					),
+				),
+				ouroboros.WithTxSubmissionConfig(
+					otxsubmission.NewConfig(
+						n.txsubmissionServerConnOpts()...,
+					),
+				),
+				ouroboros.WithChainSyncConfig(
+					ochainsync.NewConfig(
+						n.chainsyncServerConnOpts()...,
+					),
+				),
+				ouroboros.WithBlockFetchConfig(
+					oblockfetch.NewConfig(
+						n.blockfetchServerConnOpts()...,
+					),
+				),
+			)
+			tmpListeners[idx] = l
+		}
+	}
+	// Create connection manager
+	n.connManager = connmanager.NewConnectionManager(
+		connmanager.ConnectionManagerConfig{
+			Logger:         n.config.logger,
+			EventBus:       n.eventBus,
+			ConnClosedFunc: n.connectionManagerConnClosed,
+			Listeners:      tmpListeners,
+		},
+	)
+	// Start listeners
+	if err := n.connManager.Start(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (n *Node) connectionManagerConnClosed(
