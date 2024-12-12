@@ -40,10 +40,31 @@ func Run(logger *slog.Logger) error {
 		fmt.Sprintf("topology: %+v", config.GetTopologyConfig()),
 		"component", "node",
 	)
-	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port))
+	tcpNtN, err := net.Listen(
+		"tcp",
+		fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port),
+	)
 	if err != nil {
 		return err
 	}
+	logger.Info(
+		fmt.Sprintf(
+			"listening for ouroboros node-to-node connections on %s",
+			fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port),
+		),
+		"component", "node",
+	)
+	socketNtC, err := net.Listen("unix", cfg.SocketPath)
+	if err != nil {
+		return err
+	}
+	logger.Info(
+		fmt.Sprintf(
+			"listening for ouroboros node-to-client connections on socket %s",
+			cfg.SocketPath,
+		),
+		"component", "node",
+	)
 	var nodeCfg *cardano.CardanoNodeConfig
 	if cfg.CardanoConfig != "" {
 		tmpCfg, err := cardano.NewCardanoNodeConfigFromFile(cfg.CardanoConfig)
@@ -59,13 +80,6 @@ func Run(logger *slog.Logger) error {
 			"component", "node",
 		)
 	}
-	logger.Info(
-		fmt.Sprintf(
-			"listening for ouroboros node-to-node connections on %s",
-			fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port),
-		),
-		"component", "node",
-	)
 	d, err := dingo.New(
 		dingo.NewConfig(
 			dingo.WithIntersectTip(cfg.IntersectTip),
@@ -75,7 +89,11 @@ func Run(logger *slog.Logger) error {
 			dingo.WithCardanoNodeConfig(nodeCfg),
 			dingo.WithListeners(
 				dingo.ListenerConfig{
-					Listener: l,
+					Listener: tcpNtN,
+				},
+				dingo.ListenerConfig{
+					Listener: socketNtC,
+					UseNtC:   true,
 				},
 			),
 			// Enable metrics with default prometheus registry
