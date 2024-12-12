@@ -17,3 +17,18 @@ This is a work in progress and is currently under heavy development
   <img src="./.github/dingo-20241210.png" alt="dingo screenshot" width="640">
 </div>
 
+## Development / Building
+
+This requires Go 1.22 or better is installed. You also need `make`.
+
+```bash
+# Build
+make
+# Run
+./dingo
+```
+
+You can also run the code without building a binary, first
+```bash
+go run ./cmd/dingo/
+```
