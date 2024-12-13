@@ -15,21 +15,12 @@
 package dingo
 
 import (
-	"context"
 	"fmt"
 	"net"
-	"slices"
 	"strconv"
 	"syscall"
 	"time"
 
-	ouroboros "github.com/blinklabs-io/gouroboros"
-	"github.com/blinklabs-io/gouroboros/protocol/blockfetch"
-	"github.com/blinklabs-io/gouroboros/protocol/chainsync"
-	"github.com/blinklabs-io/gouroboros/protocol/peersharing"
-	"github.com/blinklabs-io/gouroboros/protocol/txsubmission"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/sys/unix"
 )
 
@@ -139,116 +130,16 @@ func (n *Node) startOutboundConnections() {
 }
 
 func (n *Node) createOutboundConnection(peer outboundPeer) error {
-	t := otel.Tracer("")
-	if t != nil {
-		_, span := t.Start(context.TODO(), "create outbound connection")
-		defer span.End()
-		span.SetAttributes(
-			attribute.String("peer.address", peer.Address),
-		)
-	}
-
-	var clientAddr net.Addr
-	dialer := net.Dialer{
-		Timeout: 10 * time.Second,
-	}
-	if n.config.outboundSourcePort > 0 {
-		// Setup connection to use our listening port as the source port
-		// This is required for peer sharing to be useful
-		clientAddr, _ = net.ResolveTCPAddr(
-			"tcp",
-			fmt.Sprintf(":%d", n.config.outboundSourcePort),
-		)
-		dialer.LocalAddr = clientAddr
-		dialer.Control = outboundSocketControl
-	}
-	n.config.logger.Debug(
-		fmt.Sprintf(
-			"establishing TCP connection to: %s",
-			peer.Address,
-		),
-		"component", "network",
-		"role", "client",
-	)
-	tmpConn, err := dialer.Dial("tcp", peer.Address)
+	conn, err := n.connManager.CreateOutboundConn(peer.Address)
 	if err != nil {
 		return err
 	}
-	// Build connection options
-	connOpts := []ouroboros.ConnectionOptionFunc{
-		ouroboros.WithConnection(tmpConn),
-		ouroboros.WithLogger(n.config.logger),
-		ouroboros.WithNetworkMagic(n.config.networkMagic),
-		ouroboros.WithNodeToNode(true),
-		ouroboros.WithKeepAlive(true),
-		ouroboros.WithFullDuplex(true),
-		ouroboros.WithPeerSharing(n.config.peerSharing),
-		ouroboros.WithPeerSharingConfig(
-			peersharing.NewConfig(
-				slices.Concat(
-					n.peersharingClientConnOpts(),
-					n.peersharingServerConnOpts(),
-				)...,
-			),
-		),
-		ouroboros.WithTxSubmissionConfig(
-			txsubmission.NewConfig(
-				slices.Concat(
-					n.txsubmissionClientConnOpts(),
-					n.txsubmissionServerConnOpts(),
-				)...,
-			),
-		),
-		ouroboros.WithChainSyncConfig(
-			chainsync.NewConfig(
-				slices.Concat(
-					n.chainsyncClientConnOpts(),
-					n.chainsyncServerConnOpts(),
-				)...,
-			),
-		),
-		ouroboros.WithBlockFetchConfig(
-			blockfetch.NewConfig(
-				slices.Concat(
-					n.blockfetchClientConnOpts(),
-					n.blockfetchServerConnOpts(),
-				)...,
-			),
-		),
-	}
-	// Setup Ouroboros connection
-	n.config.logger.Debug(
-		fmt.Sprintf(
-			"establishing ouroboros protocol to %s",
-			peer.Address,
-		),
-		"component", "network",
-		"role", "client",
-	)
-	oConn, err := ouroboros.NewConnection(
-		connOpts...,
-	)
-	if err != nil {
-		return err
-	}
-	n.config.logger.Info(
-		fmt.Sprintf("connected ouroboros to %s", peer.Address),
-		"component", "network",
-		"role", "client",
-	)
-	n.config.logger.Debug(
-		fmt.Sprintf("peer address mapping: address: %s", peer.Address),
-		"component", "network",
-		"role", "client",
-		"connection_id", oConn.Id().String(),
-	)
+	connId := conn.Id()
 	peer.ReconnectCount = 0
 	peer.ReconnectDelay = 0
-	// Add to connection manager
-	n.connManager.AddConnection(oConn)
 	// Add to outbound connection tracking
 	n.outboundConnsMutex.Lock()
-	n.outboundConns[oConn.Id()] = peer
+	n.outboundConns[connId] = peer
 	n.outboundConnsMutex.Unlock()
 	// TODO: replace this with handling for multiple chainsync clients
 	// Start chainsync client if we don't have another
@@ -256,13 +147,13 @@ func (n *Node) createOutboundConnection(peer outboundPeer) error {
 	defer n.chainsyncState.Unlock()
 	chainsyncClientConnId := n.chainsyncState.GetClientConnId()
 	if chainsyncClientConnId == nil {
-		if err := n.chainsyncClientStart(oConn.Id()); err != nil {
+		if err := n.chainsyncClientStart(connId); err != nil {
 			return err
 		}
-		n.chainsyncState.SetClientConnId(oConn.Id())
+		n.chainsyncState.SetClientConnId(connId)
 	}
 	// Start txsubmission client
-	if err := n.txsubmissionClientStart(oConn.Id()); err != nil {
+	if err := n.txsubmissionClientStart(connId); err != nil {
 		return err
 	}
 	return nil

@@ -72,10 +72,12 @@ type ConnectionManager struct {
 }
 
 type ConnectionManagerConfig struct {
-	Logger         *slog.Logger
-	EventBus       *event.EventBus
-	ConnClosedFunc ConnectionManagerConnClosedFunc
-	Listeners      []ListenerConfig
+	Logger             *slog.Logger
+	EventBus           *event.EventBus
+	ConnClosedFunc     ConnectionManagerConnClosedFunc
+	Listeners          []ListenerConfig
+	OutboundConnOpts   []ouroboros.ConnectionOptionFunc
+	OutboundSourcePort uint
 }
 
 type ConnectionManagerHost struct {

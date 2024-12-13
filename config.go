@@ -39,7 +39,7 @@ type Config struct {
 	listeners          []ListenerConfig
 	network            string
 	networkMagic       uint32
-	outboundSourcePort int
+	outboundSourcePort uint
 	peerSharing        bool
 	promRegistry       prometheus.Registerer
 	topologyConfig     *topology.TopologyConfig
@@ -176,7 +176,7 @@ func WithNetworkMagic(networkMagic uint32) ConfigOptionFunc {
 }
 
 // WithOutboundSourcePort specifies the source port to use for outbound connections. This defaults to dynamic source ports
-func WithOutboundSourcePort(port int) ConfigOptionFunc {
+func WithOutboundSourcePort(port uint) ConfigOptionFunc {
 	return func(c *Config) {
 		c.outboundSourcePort = port
 	}
