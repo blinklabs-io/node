@@ -97,6 +97,10 @@ func (n *Node) Run() error {
 	if err := n.configureConnManager(); err != nil {
 		return err
 	}
+	// Validate config
+	if err := n.configValidate(); err != nil {
+		return err
+	}
 	// Start outbound connections
 	if n.config.topologyConfig != nil {
 		n.connManager.AddHostsFromTopology(n.config.topologyConfig)
@@ -177,6 +181,10 @@ func (n *Node) configureConnManager() error {
 			Listeners:      tmpListeners,
 		},
 	)
+	// Validate config
+	if err := n.configValidate(); err != nil {
+		return err
+	}
 	// Start listeners
 	if err := n.connManager.Start(); err != nil {
 		return err

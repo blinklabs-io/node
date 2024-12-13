@@ -54,8 +54,21 @@ func Run(logger *slog.Logger) error {
 		),
 		"component", "node",
 	)
+	// TODO: make this safer, check PID, create parent, etc.
+	if _, err := os.Stat(cfg.SocketPath); err == nil {
+		os.Remove(cfg.SocketPath)
+	}
 	socketNtC, err := net.Listen("unix", cfg.SocketPath)
 	if err != nil {
+		logger.Error(
+			fmt.Sprintf(
+				"failed listening on socket: %s: %+v: %+v",
+				cfg.SocketPath,
+				socketNtC,
+				err,
+			),
+			"component", "node",
+		)
 		return err
 	}
 	logger.Info(
