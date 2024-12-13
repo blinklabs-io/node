@@ -165,8 +165,8 @@ func (n *Node) configureConnManager() error {
 					),
 				),
 			)
-			tmpListeners[idx] = l
 		}
+		tmpListeners[idx] = l
 	}
 	// Create connection manager
 	n.connManager = connmanager.NewConnectionManager(
