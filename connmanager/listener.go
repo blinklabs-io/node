@@ -18,12 +18,10 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"syscall"
 
 	"github.com/blinklabs-io/dingo/event"
 
 	ouroboros "github.com/blinklabs-io/gouroboros"
-	"golang.org/x/sys/unix"
 )
 
 type ListenerConfig struct {
@@ -49,7 +47,7 @@ func (c *ConnectionManager) startListener(l ListenerConfig) error {
 	if l.Listener == nil {
 		listenConfig := net.ListenConfig{}
 		if l.ReuseAddress {
-			listenConfig.Control = listenerSocketControl
+			listenConfig.Control = socketControl
 		}
 		listener, err := listenConfig.Listen(
 			context.Background(),
@@ -118,34 +116,5 @@ func (c *ConnectionManager) startListener(l ListenerConfig) error {
 			)
 		}
 	}()
-	return nil
-}
-
-// listenerSocketControl is a helper function for setting socket options on listener sockets
-func listenerSocketControl(network, address string, c syscall.RawConn) error {
-	var innerErr error
-	err := c.Control(func(fd uintptr) {
-		err := unix.SetsockoptInt(
-			int(fd),
-			unix.SOL_SOCKET,
-			unix.SO_REUSEADDR,
-			1,
-		)
-		if err != nil {
-			innerErr = err
-			return
-		}
-		err = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
-		if err != nil {
-			innerErr = err
-			return
-		}
-	})
-	if innerErr != nil {
-		return innerErr
-	}
-	if err != nil {
-		return err
-	}
 	return nil
 }

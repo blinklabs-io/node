@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/blinklabs-io/dingo/chainsync"
@@ -97,10 +98,6 @@ func (n *Node) Run() error {
 	if err := n.configureConnManager(); err != nil {
 		return err
 	}
-	// Validate config
-	if err := n.configValidate(); err != nil {
-		return err
-	}
 	// Start outbound connections
 	if n.config.topologyConfig != nil {
 		n.connManager.AddHostsFromTopology(n.config.topologyConfig)
@@ -175,16 +172,52 @@ func (n *Node) configureConnManager() error {
 	// Create connection manager
 	n.connManager = connmanager.NewConnectionManager(
 		connmanager.ConnectionManagerConfig{
-			Logger:         n.config.logger,
-			EventBus:       n.eventBus,
-			ConnClosedFunc: n.connectionManagerConnClosed,
-			Listeners:      tmpListeners,
+			Logger:             n.config.logger,
+			EventBus:           n.eventBus,
+			ConnClosedFunc:     n.connectionManagerConnClosed,
+			Listeners:          tmpListeners,
+			OutboundSourcePort: n.config.outboundSourcePort,
+			OutboundConnOpts: []ouroboros.ConnectionOptionFunc{
+				ouroboros.WithNetworkMagic(n.config.networkMagic),
+				ouroboros.WithNodeToNode(true),
+				ouroboros.WithKeepAlive(true),
+				ouroboros.WithFullDuplex(true),
+				ouroboros.WithPeerSharing(n.config.peerSharing),
+				ouroboros.WithPeerSharingConfig(
+					opeersharing.NewConfig(
+						slices.Concat(
+							n.peersharingClientConnOpts(),
+							n.peersharingServerConnOpts(),
+						)...,
+					),
+				),
+				ouroboros.WithTxSubmissionConfig(
+					otxsubmission.NewConfig(
+						slices.Concat(
+							n.txsubmissionClientConnOpts(),
+							n.txsubmissionServerConnOpts(),
+						)...,
+					),
+				),
+				ouroboros.WithChainSyncConfig(
+					ochainsync.NewConfig(
+						slices.Concat(
+							n.chainsyncClientConnOpts(),
+							n.chainsyncServerConnOpts(),
+						)...,
+					),
+				),
+				ouroboros.WithBlockFetchConfig(
+					oblockfetch.NewConfig(
+						slices.Concat(
+							n.blockfetchClientConnOpts(),
+							n.blockfetchServerConnOpts(),
+						)...,
+					),
+				),
+			},
 		},
 	)
-	// Validate config
-	if err := n.configValidate(); err != nil {
-		return err
-	}
 	// Start listeners
 	if err := n.connManager.Start(); err != nil {
 		return err
