@@ -5,7 +5,7 @@ go 1.22
 toolchain go1.22.8
 
 require (
-	github.com/blinklabs-io/gouroboros v0.105.0
+	github.com/blinklabs-io/gouroboros v0.105.1
 	github.com/blinklabs-io/ouroboros-mock v0.3.5
 	github.com/dgraph-io/badger/v4 v4.5.0
 	github.com/glebarez/sqlite v1.11.0
@@ -55,7 +55,7 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/utxorpc/go-codegen v0.12.0 // indirect
+	github.com/utxorpc/go-codegen v0.14.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.32.0 // indirect
@@ -68,7 +68,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20241104194629-dd2ea8efbc28 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241104194629-dd2ea8efbc28 // indirect
 	google.golang.org/grpc v1.67.1 // indirect
-	google.golang.org/protobuf v1.35.1 // indirect
+	google.golang.org/protobuf v1.35.2 // indirect
 	modernc.org/libc v1.22.5 // indirect
 	modernc.org/mathutil v1.5.0 // indirect
 	modernc.org/memory v1.5.0 // indirect
