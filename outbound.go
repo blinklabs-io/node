@@ -194,6 +194,8 @@ func (n *Node) reconnectOutboundConnection(peer outboundPeer) {
 }
 
 // outboundSocketControl is a helper function for setting socket options outbound sockets
+//
+//nolint:unused
 func outboundSocketControl(network, address string, c syscall.RawConn) error {
 	var innerErr error
 	err := c.Control(func(fd uintptr) {
