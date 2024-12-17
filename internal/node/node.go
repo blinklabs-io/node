@@ -17,7 +17,6 @@ package node
 import (
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -40,44 +39,10 @@ func Run(logger *slog.Logger) error {
 		fmt.Sprintf("topology: %+v", config.GetTopologyConfig()),
 		"component", "node",
 	)
-	tcpNtN, err := net.Listen(
-		"tcp",
-		fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port),
-	)
-	if err != nil {
-		return err
-	}
-	logger.Info(
-		fmt.Sprintf(
-			"listening for ouroboros node-to-node connections on %s",
-			fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port),
-		),
-		"component", "node",
-	)
 	// TODO: make this safer, check PID, create parent, etc.
 	if _, err := os.Stat(cfg.SocketPath); err == nil {
 		os.Remove(cfg.SocketPath)
 	}
-	socketNtC, err := net.Listen("unix", cfg.SocketPath)
-	if err != nil {
-		logger.Error(
-			fmt.Sprintf(
-				"failed listening on socket: %s: %+v: %+v",
-				cfg.SocketPath,
-				socketNtC,
-				err,
-			),
-			"component", "node",
-		)
-		return err
-	}
-	logger.Info(
-		fmt.Sprintf(
-			"listening for ouroboros node-to-client connections on socket %s",
-			cfg.SocketPath,
-		),
-		"component", "node",
-	)
 	var nodeCfg *cardano.CardanoNodeConfig
 	if cfg.CardanoConfig != "" {
 		tmpCfg, err := cardano.NewCardanoNodeConfigFromFile(cfg.CardanoConfig)
@@ -102,13 +67,17 @@ func Run(logger *slog.Logger) error {
 			dingo.WithCardanoNodeConfig(nodeCfg),
 			dingo.WithListeners(
 				dingo.ListenerConfig{
-					Listener: tcpNtN,
+					ListenNetwork: "tcp",
+					ListenAddress: fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port),
+					ReuseAddress:  true,
 				},
 				dingo.ListenerConfig{
-					Listener: socketNtC,
-					UseNtC:   true,
+					ListenNetwork: "unix",
+					ListenAddress: cfg.SocketPath,
+					UseNtC:        true,
 				},
 			),
+			dingo.WithOutboundSourcePort(cfg.Port),
 			// Enable metrics with default prometheus registry
 			dingo.WithPrometheusRegistry(prometheus.DefaultRegisterer),
 			// TODO: make this configurable

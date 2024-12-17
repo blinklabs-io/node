@@ -58,6 +58,21 @@ func (c *ConnectionManager) startListener(l ListenerConfig) error {
 			return fmt.Errorf("failed to open listening socket: %s", err)
 		}
 		l.Listener = listener
+		if l.UseNtC {
+			c.config.Logger.Info(
+				fmt.Sprintf(
+					"listening for ouroboros node-to-node connections on %s",
+					l.ListenAddress,
+				),
+			)
+		} else {
+			c.config.Logger.Info(
+				fmt.Sprintf(
+					"listening for ouroboros node-to-client connections on %s",
+					l.ListenAddress,
+				),
+			)
+		}
 	}
 	// Build connection options
 	defaultConnOpts := []ouroboros.ConnectionOptionFunc{
