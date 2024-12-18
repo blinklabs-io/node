@@ -71,7 +71,7 @@ func (p *PeerGovernor) LoadTopologyConfig(
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	// Remove peers originally sourced from the topology
-	var tmpPeers []*Peer
+	tmpPeers := []*Peer{}
 	for _, tmpPeer := range p.peers {
 		if tmpPeer.Source == PeerSourceTopologyBootstrapPeer ||
 			tmpPeer.Source == PeerSourceTopologyLocalRoot ||
